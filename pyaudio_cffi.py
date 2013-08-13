@@ -123,26 +123,17 @@ PaError Pa_GetSampleSize (PaSampleFormat);
 void Pa_Sleep (long);
 """)
 
-float32 = 0x00000001
-int32   = 0x00000002
-# int24   = 0x00000004 Not supported by numpy!
-int16   = 0x00000008
-int8    = 0x00000010
-uint8   = 0x00000020
-
-_pa2np = {
-    float32: np.float32,
-    int32: np.int32,
-    # int24: None, Not supported by numpy!
-    int16: np.int16,
-    int8: np.int8,
-    uint8: np.uint8
+_np2pa = {
+    np.float32: 0x01,
+    np.int32:   0x02,
+    np.int16:   0x08,
+    np.int8:    0x10,
+    np.uint8:   0x20
 }
 
 _npsizeof = {
     np.float32: 4,
     np.int32: 4,
-    # np.int24: 3, Not supported by numpy!
     np.int16: 2,
     np.int8: 1,
     np.uint8: 1
@@ -183,7 +174,7 @@ def _dev2dict(dev, index):
              'default_sample_rate': dev.defaultSampleRate,
              'input_latency': dev.defaultLowInputLatency,
              'output_latency': dev.defaultLowOutputLatency,
-             'sample_format': float32,
+             'sample_format': np.float32,
              'interleaved_data': True }
 
 def devices():
@@ -215,29 +206,29 @@ class Stream(object):
         if output_device is None:
             output_device = default_output_device()
         if callback is not None or finished_callback is not None:
-            raise NotImplementedError("stream callbacks are not implemented yet")
+            raise NotImplementedError("stream callbacks are not implemented")
 
-        input_stream_parameters = ffi.new("PaStreamParameters*",
-                                          { 'device': input_device['device_index'],
-                                            'channelCount': input_device['input_channels'],
-                                            'sampleFormat': input_device['sample_format'],
-                                            'suggestedLatency': input_device['input_latency'],
-                                            'hostApiSpecificStreamInfo': ffi.NULL })
-        self._input_format = _pa2np[input_stream_parameters.sampleFormat]
-        self._input_channels = input_stream_parameters.channelCount
+        stream_parameters_in = ffi.new("PaStreamParameters*",
+                                       ( input_device['device_index'],
+                                         input_device['input_channels'],
+                                         _np2pa[input_device['sample_format']],
+                                         input_device['input_latency'],
+                                         ffi.NULL ))
+        self.input_format = input_device['sample_format']
+        self.input_channels = stream_parameters_in.channelCount
         if not input_device['interleaved_data']:
-            input_stream_parameters.sampleFormat |= 0x80000000
+            stream_parameters_in.sampleFormat |= 0x80000000
 
-        output_stream_parameters = ffi.new("PaStreamParameters*",
-                                           { 'device': output_device['device_index'],
-                                            'channelCount': output_device['output_channels'],
-                                            'sampleFormat': output_device['sample_format'],
-                                            'suggestedLatency': output_device['output_latency'],
-                                             'hostApiSpecificStreamInfo': ffi.NULL })
-        self._output_format = _pa2np[output_stream_parameters.sampleFormat]
-        self._output_channels = output_stream_parameters.channelCount
+        stream_parameters_out = ffi.new("PaStreamParameters*",
+                                        ( output_device['device_index'],
+                                          output_device['output_channels'],
+                                          _np2pa[output_device['sample_format']],
+                                          output_device['output_latency'],
+                                          ffi.NULL ))
+        self.output_format = output_device['sample_format']
+        self.output_channels = stream_parameters_out.channelCount
         if not output_device['interleaved_data']:
-            output_stream_parameters.sampleFormat |= 0x80000000
+            stream_parameters_out.sampleFormat |= 0x80000000
 
         stream_flags = 0
         if 'no_clipping' in flags:
@@ -250,9 +241,9 @@ class Stream(object):
             stream_flags |= 0x00000008
 
         self._stream = ffi.new("PaStream**")
-        err = _pa.Pa_OpenStream(self._stream,
-                                input_stream_parameters, output_stream_parameters,
-                                sample_rate, block_length, stream_flags, ffi.NULL, ffi.NULL)
+        err = _pa.Pa_OpenStream(self._stream, stream_parameters_in,
+                                stream_parameters_out, sample_rate,
+                                block_length, stream_flags, ffi.NULL, ffi.NULL)
         self._handle_error(err)
 
     def _handle_error(self, err):
@@ -303,25 +294,27 @@ class Stream(object):
         return _pa.Pa_GetStreamCpuLoad(self._stream[0])
 
     def read(self, num_frames=1024, raw=False):
-        num_bytes = self._input_channels*_npsizeof[self._input_format]*num_frames
+        num_bytes = self.input_channels*_npsizeof[self.input_format]*num_frames
         data = ffi.new("char[]", num_bytes)
-        self._handle_error(_pa.Pa_ReadStream(self._stream[0], data, num_frames))
+        err = _pa.Pa_ReadStream(self._stream[0], data, num_frames)
+        self._handle_error(err)
         if raw:
             return data
         else:
-            data = np.fromstring(ffi.buffer(data), dtype=self._input_format,
-                                 count=num_frames*self._input_channels)
-            return np.reshape(data, (num_frames, self._input_channels))
+            data = np.fromstring(ffi.buffer(data), dtype=self.input_format,
+                                 count=num_frames*self.input_channels)
+            return np.reshape(data, (num_frames, self.input_channels))
 
     def write(self, data, num_frames=None):
         num_frames = num_frames or len(data)
         if isinstance(data, np.ndarray):
-            if data.dtype != self._output_format:
-                data = np.array(data, dtype=self._output_format)
+            if data.dtype != self.output_format:
+                data = np.array(data, dtype=self.output_format)
             data = data.flatten().tostring()
         elif isinstance(data, list):
-            data = np.array(data, dtype=self._output_format).flatten().tostring()
-        self._handle_error(_pa.Pa_WriteStream(self._stream[0], data, num_frames))
+            data = np.array(data, dtype=self.output_format).flatten().tostring()
+        err = _pa.Pa_WriteStream(self._stream[0], data, num_frames)
+        self._handle_error(err)
 
 if __name__ == '__main__':
     from scipy.io.wavfile import read as wavread
