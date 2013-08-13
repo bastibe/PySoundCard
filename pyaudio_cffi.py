@@ -1,5 +1,3 @@
-import os
-os.environ['DYLD_LIBRARY_PATH'] = '/opt/local/lib'
 from cffi import FFI
 import atexit
 import numpy as np
