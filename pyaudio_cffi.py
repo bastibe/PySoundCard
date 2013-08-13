@@ -149,7 +149,7 @@ def _terminate():
 def _api2dict(api, index):
     return { 'struct_version': api.structVersion,
              'type': api.type,
-             'name': ffi.string(api.name),
+             'name': ffi.string(api.name).decode(),
              'api_idx': index,
              'device_count': api.deviceCount,
              'default_input_device_index': api.defaultInputDevice,
@@ -162,7 +162,7 @@ def apis():
 
 def _dev2dict(dev, index):
     return { 'struct_version': dev.structVersion,
-             'name': ffi.string(dev.name),
+             'name': ffi.string(dev.name).decode(),
              'device_index': index,
              'host_api_index': dev.hostApi,
              'input_channels': dev.maxInputChannels,
@@ -194,7 +194,8 @@ def default_output_device():
     return _dev2dict(_pa.Pa_GetDeviceInfo(idx), idx)
 
 def pa_version():
-    return (_pa.Pa_GetVersion(), ffi.string(_pa.Pa_GetVersionText()))
+    return (_pa.Pa_GetVersion(), ffi.string(_pa.Pa_GetVersionText()).decode())
+
 
 class Stream(object):
     def __init__(self, sample_rate=44100, block_length=1024,
