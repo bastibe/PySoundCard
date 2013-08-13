@@ -1,6 +1,7 @@
 from cffi import FFI
 import atexit
 import numpy as np
+import warnings
 
 ffi = FFI()
 ffi.cdef("""
@@ -256,7 +257,9 @@ class Stream(object):
 
     def _handle_error(self, err):
         if err >= 0: return err
-        print("Warning (%.4f): %s" % (self.time(), ffi.string(_pa.Pa_GetErrorText(err))))
+        errstr = ffi.string(_pa.Pa_GetErrorText(err)).decode()
+        warnings.warn("%.4f: %s" % (self.time(), errstr),
+                      RuntimeWarning, stacklevel=2)
 
     def __del__(self):
         # At program shutdown, _pa is sometimes deleted before this
