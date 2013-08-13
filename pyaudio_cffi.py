@@ -155,11 +155,6 @@ def _api2dict(api, index):
              'default_input_device_index': api.defaultInputDevice,
              'default_output_device_index': api.defaultOutputDevice }
 
-def apis():
-    for idx in range(_pa.Pa_GetHostApiCount()):
-        yield _api2dict(_pa.Pa_GetHostApiInfo(idx), idx)
-
-
 def _dev2dict(dev, index):
     return { 'struct_version': dev.structVersion,
              'name': ffi.string(dev.name).decode(),
@@ -177,21 +172,31 @@ def _dev2dict(dev, index):
              'sample_format': np.float32,
              'interleaved_data': True }
 
+
+def apis():
+    for idx in range(_pa.Pa_GetHostApiCount()):
+        yield _api2dict(_pa.Pa_GetHostApiInfo(idx), idx)
+
+
 def devices():
     for idx in range(_pa.Pa_GetDeviceCount()):
         yield _dev2dict(_pa.Pa_GetDeviceInfo(idx), idx)
+
 
 def default_api():
     idx = _pa.Pa_GetDefaultHostApi()
     return _api2dict(_pa.Pa_GetHostApiInfo(idx), idx)
 
+
 def default_input_device():
     idx = _pa.Pa_GetDefaultInputDevice()
     return _dev2dict(_pa.Pa_GetDeviceInfo(idx), idx)
 
+
 def default_output_device():
     idx = _pa.Pa_GetDefaultOutputDevice()
     return _dev2dict(_pa.Pa_GetDeviceInfo(idx), idx)
+
 
 def pa_version():
     return (_pa.Pa_GetVersion(), ffi.string(_pa.Pa_GetVersionText()).decode())
@@ -316,6 +321,7 @@ class Stream(object):
             data = np.array(data, dtype=self.output_format).flatten().tostring()
         err = _pa.Pa_WriteStream(self._stream[0], data, num_frames)
         self._handle_error(err)
+
 
 if __name__ == '__main__':
     from scipy.io.wavfile import read as wavread
