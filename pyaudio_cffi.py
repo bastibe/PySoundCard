@@ -255,8 +255,13 @@ class Stream(object):
     def _handle_error(self, err):
         if err >= 0: return err
         errstr = ffi.string(_pa.Pa_GetErrorText(err)).decode()
-        warnings.warn("%.4f: %s" % (self.time(), errstr),
-                      RuntimeWarning, stacklevel=2)
+        if err == -9981 or err == -9980:
+            # InputOverflowed and OuputUnderflowed are non-fatal:
+            warnings.warn("%.4f: %s" % (self.time(), errstr),
+                          RuntimeWarning, stacklevel=2)
+            return err
+        else:
+            raise RuntimeError("%.4f: %s" % (self.time(), errstr))
 
     def __del__(self):
         # At program shutdown, _pa is sometimes deleted before this
