@@ -149,7 +149,9 @@ _pa.Pa_Initialize()
 
 @atexit.register
 def _terminate():
+    global _pa
     _pa.Pa_Terminate()
+    _pa = None
 
 def _api2dict(api, index):
     return { 'struct_version': api.structVersion,
