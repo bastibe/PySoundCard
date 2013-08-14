@@ -1,4 +1,4 @@
-from pyaudio_cffi import Stream
+from pysoundio import Stream
 
 """Loop back five seconds of audio data."""
 

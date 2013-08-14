@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 from scipy.io.wavfile import read as wavread
-from pyaudio_cffi import Stream
+from pysoundio import Stream
 
 """Play an audio file."""
 

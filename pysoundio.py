@@ -3,17 +3,17 @@ import atexit
 import numpy as np
 import warnings
 
-"""PyAudio-CFFI is an audio library based on PortAudio, CFFI and NumPy
+"""PySoundIO is an audio library based on PortAudio, CFFI and NumPy
 
-PyAudio-CFFI can play and record audio data. Audio devices are
-supported through PortAudio[1], which is a free, cross-platform,
-open-source audio I/O library that runs on may platforms including
-Windows, OS X, and Unix (OSS/ALSA). It is accessed through CFFI[2],
-which is a foreign function interface for Python calling C code. CFFI
-is supported for CPython 2.6+, 3.x and PyPy 2.0+. PyAudio-CFFI
-represents audio data as NumPy arrays.
+PySoundIO can play and record audio data. Audio devices are supported
+through PortAudio[1], which is a free, cross-platform, open-source
+audio I/O library that runs on may platforms including Windows, OS X,
+and Unix (OSS/ALSA). It is accessed through CFFI[2], which is a
+foreign function interface for Python calling C code. CFFI is
+supported for CPython 2.6+, 3.x and PyPy 2.0+. PySoundIO represents
+audio data as NumPy arrays.
 
-PyAudio-CFFI is inspired by PyAudio[3]. Its main difference is that it
+PySoundIO is inspired by PyAudio[3]. Its main difference is that it
 uses CFFI instead of a CPython extension and tries to implement a more
 pythonic interface. Its performance characteristics are very similar.
 
@@ -21,7 +21,7 @@ pythonic interface. Its performance characteristics are very similar.
 [2]: http://cffi.readthedocs.org/
 [3]: http://people.csail.mit.edu/hubert/pyaudio/
 
-The basic building block of audio input/output in PyAudio-CFFI are
+The basic building block of audio input/output in PySoundIO are
 streams. Streams represent sound cards, both for audio playback and
 recording. Every stream has a sample rate, a block size, an input
 device and/or an output device.
@@ -55,7 +55,7 @@ by modifying the dictionary before passing it to the stream
 constructor. This includes the number of channels, the desired
 latency, and the audio data format.
 
-PyAudio-CFFI is BSD licensed.
+PySoundIO is BSD licensed.
 (c) 2013, Bastian Bechtold
 
 """

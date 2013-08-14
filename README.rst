@@ -1,19 +1,19 @@
-============
-PyAudio-CFFI
-============
+=========
+PySoundIO
+=========
 
-PyAudio-CFFI is an audio library based on PortAudio, CFFI and NumPy
+PySoundIO is an audio library based on PortAudio, CFFI and NumPy
 
-PyAudio-CFFI can play and record audio data. Audio devices are
-supported through PortAudio_, which is a free, cross-platform,
-open-source audio I/O library that runs on may platforms including
-Windows, OS X, and Unix (OSS/ALSA). It is accessed through CFFI_,
-which is a foreign function interface for Python calling C code. CFFI
-is supported for CPython 2.6+, 3.x and PyPy 2.0+. PyAudio-CFFI
-represents audio data as NumPy arrays.
+PySoundIO can play and record audio data. Audio devices are supported
+through PortAudio_, which is a free, cross-platform, open-source audio
+I/O library that runs on may platforms including Windows, OS X, and
+Unix (OSS/ALSA). It is accessed through CFFI_, which is a foreign
+function interface for Python calling C code. CFFI is supported for
+CPython 2.6+, 3.x and PyPy 2.0+. PySoundIO represents audio data as
+NumPy arrays.
 
-PyAudio-CFFI is inspired by PyAudio_. Its main difference is that it
-uses CFFI instead of a CPython extension and tries to implement a more
+PySoundIO is inspired by PyAudio_. Its main difference is that it uses
+CFFI instead of a CPython extension and tries to implement a more
 pythonic interface. Its performance characteristics are very similar.
 
 .. _PortAudio: http://www.portaudio.com/
@@ -21,13 +21,13 @@ pythonic interface. Its performance characteristics are very similar.
 .. _PyAudio: http://people.csail.mit.edu/hubert/pyaudio/
 
 
-| PyAudio-CFFI is BSD licensed.
+| PySoundIO is BSD licensed.
 | (c) 2013, Bastian Bechtold
 
 Usage
 -----
 
-The basic building block of audio input/output in PyAudio-CFFI are
+The basic building block of audio input/output in PySoundIO are
 streams. Streams represent sound cards, both for audio playback and
 recording. Every stream has a sample rate, a block size, an input
 device and/or an output device.
@@ -53,7 +53,7 @@ immediately plays it back:
 
 .. code:: python
 
-    from pyaudio_cffi import Stream
+    from pysoundio import Stream
 
     """Loop back five seconds of audio data."""
 
@@ -72,7 +72,7 @@ Here is another example that reads a wave file and plays it back:
     import sys
     import numpy as np
     from scipy.io.wavfile import read as wavread
-    from pyaudio_cffi import Stream
+    from pysoundio import Stream
 
     """Play an audio file."""
 
@@ -102,7 +102,7 @@ synthesizers or filter-like audio effects.
 
 .. code:: python
 
-    from pyaudio_cffi import Stream, continue_flag
+    from pysoundio import Stream, continue_flag
     import time
 
     """Loop back five seconds of audio data."""
@@ -126,7 +126,7 @@ available.
     import time
     import numpy as np
     from scipy.io.wavfile import read as wavread
-    from pyaudio_cffi import Stream, continue_flag, complete_flag
+    from pysoundio import Stream, continue_flag, complete_flag
 
     """Play an audio file."""
 
@@ -155,7 +155,7 @@ When to use Read/Write Mode or Callback Mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In general, callback mode is the more flexible and powerful way of
-using PyAudio-CFFI. However, it is more complex and less performant.
+using PySoundIO. However, it is more complex and less performant.
 Many applications will require callback mode because of its threading.
 Also, it is very simple to write filter-like audio effects in callback
 mode since audio input and output are readily available.
@@ -173,10 +173,10 @@ if you want to play silence.
 Performance
 ~~~~~~~~~~~
 
-PyAudio-CFFI uses the CFFI library internally. Performance is a big
-goal for the project. On a reasonably recent Apple computer, block
-sizes of two or four samples should be no problem at a sampling rate
-of 44100 or 48000 Hz.
+PySoundIO uses the CFFI library internally. Performance is a big goal
+for the project. On a reasonably recent Apple computer, block sizes of
+two or four samples should be no problem at a sampling rate of 44100
+or 48000 Hz.
 
 However, performance is strongly influenced by the API in use. Also,
 some combinations of audio devices can be problematic even if they are

@@ -1,4 +1,4 @@
-from pyaudio_cffi import Stream, continue_flag
+from pysoundio import Stream, continue_flag
 import time
 
 """Loop back five seconds of audio data."""
