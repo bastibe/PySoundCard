@@ -51,13 +51,41 @@ stream without having to wait for it to play.
 Here is an example for a program that records a block of audio and
 immediately plays it back:
 
-.. include:: tests/loopback_blocking.py
-   :code: python
+.. code:: python
+
+    from pyaudio_cffi import Stream
+
+    """Loop back five seconds of audio data."""
+
+    fs = 44100
+    block_length = 16
+    s = Stream(sample_rate=fs, block_length=block_length)
+    s.start()
+    for n in range(int(fs*5/block_length)):
+        s.write(s.read(block_length))
+    s.stop()
 
 Here is another example that reads a wave file and plays it back:
 
-.. include:: tests/playback_blocking.py
-   :code: python
+.. code:: python
+
+    import sys
+    import numpy as np
+    from scipy.io.wavfile import read as wavread
+    from pyaudio_cffi import Stream
+
+    """Play an audio file."""
+
+    fs, wave = wavread(sys.argv[1])
+    wave = np.array(wave, dtype=np.float32)
+    wave /= 2**15 # normalize -max_int16..max_int16 to -1..1
+
+    block_length = 16
+    s = Stream(sample_rate=fs, block_length=block_length)
+    s.start()
+    s.write(wave)
+    s.stop()
+
 
 Callback Mode
 ~~~~~~~~~~~~~
@@ -72,16 +100,56 @@ can see, the control flow continues normally after ``s.start()`` while
 the callback is running in a different thread. This is very useful for
 synthesizers or filter-like audio effects.
 
-.. include:: tests/loopback_callback.py
-   :code: python
+.. code:: python
+
+    from pyaudio_cffi import Stream, continue_flag
+    import time
+
+    """Loop back five seconds of audio data."""
+
+    def callback(in_data, frame_count, time_info, status):
+        return (in_data, continue_flag)
+
+    s = Stream(sample_rate=44100, block_length=16, callback=callback)
+    s.start()
+    time.sleep(5)
+    s.stop()
 
 However, callback mode is somewhat burdensome for playing back audio
 data from a file. Note how the callback now has to split up the audio
 data into blocks and stop the stream when there is no more data
 available.
 
-.. include:: tests/playback_callback.py
-   :code: python
+.. code:: python
+
+    import sys
+    import time
+    import numpy as np
+    from scipy.io.wavfile import read as wavread
+    from pyaudio_cffi import Stream, continue_flag, complete_flag
+
+    """Play an audio file."""
+
+    fs, wave = wavread(sys.argv[1])
+    wave = np.array(wave, dtype=np.float32)
+    wave /= 2**15 # normalize -max_int16..max_int16 to -1..1
+    play_position = 0
+
+    def callback(in_data, frame_count, time_info, status):
+        global play_position
+        out_data = wave[play_position:play_position+block_length]
+        play_position += block_length
+        if play_position+block_length < len(wave):
+            return (out_data, continue_flag)
+        else:
+            return (out_data, complete_flag)
+
+    block_length = 16
+    s = Stream(sample_rate=fs, block_length=block_length, callback=callback)
+    s.start()
+    while s.is_active():
+        time.sleep(0.1)
+
 
 When to use Read/Write Mode or Callback Mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
