@@ -20,7 +20,6 @@ pythonic interface. Its performance characteristics are very similar.
 .. _CFFI: http://cffi.readthedocs.org/
 .. _PyAudio: http://people.csail.mit.edu/hubert/pyaudio/
 
-
 | PySoundIO is BSD licensed.
 | (c) 2013, Bastian Bechtold
 
@@ -183,3 +182,11 @@ some combinations of audio devices can be problematic even if they are
 part of the same API. In general, try to open full duplex streams only
 on input/output devices of the same physical sound card for maximum
 performance.
+
+The Name
+~~~~~~~~
+
+Wait, wasn't this called PyAudio-CFFI just a moment ago? Yes, since it
+originally started out as a re-implementation of PyAudio using the
+CFFI instead of a CPython extension. However, it quickly developed
+into something different, which warrants a different name.
