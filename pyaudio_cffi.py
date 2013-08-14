@@ -3,6 +3,63 @@ import atexit
 import numpy as np
 import warnings
 
+"""PyAudio-CFFI is an audio library based on PortAudio, CFFI and NumPy
+
+PyAudio-CFFI can play and record audio data. Audio devices are
+supported through PortAudio[1], which is a free, cross-platform,
+open-source audio I/O library that runs on may platforms including
+Windows, OS X, and Unix (OSS/ALSA). It is accessed through CFFI[2],
+which is a foreign function interface for Python calling C code. CFFI
+is supported for CPython 2.6+, 3.x and PyPy 2.0+. PyAudio-CFFI
+represents audio data as NumPy arrays.
+
+PyAudio-CFFI is inspired by PyAudio[3]. Its main difference is that it
+uses CFFI instead of a CPython extension and tries to implement a more
+pythonic interface. Its performance characteristics are very similar.
+
+[1]: http://www.portaudio.com/
+[2]: http://cffi.readthedocs.org/
+[3]: http://people.csail.mit.edu/hubert/pyaudio/
+
+The basic building block of audio input/output in PyAudio-CFFI are
+streams. Streams represent sound cards, both for audio playback and
+recording. Every stream has a sample rate, a block size, an input
+device and/or an output device.
+
+There are two modes of operation for streams: read/write and callback
+mode.
+
+In read/write mode, two methods are used to play/record audio: For
+playback, you write to a stream. For recording, you read from a
+stream. You can read/write up to one block of audio data to a stream
+without having to wait for it to play.
+
+In callback mode, a callback function is defined, which will be called
+asynchronously whenever there is a new block of audio data available
+to read or write. The callback function must then provide/consume one
+block of audio data.
+
+A stream can be either full duplex (both input and output) or half
+duplex (either input or output). This is determined by specifying one
+or two devices for the stream. Both devices must be part of the same
+audio API.
+
+Use the function apis() to get a list of all available apis. Use the
+function devices() to get a list of all available devices. There are
+additional functions to get the default devices and api. If a stream
+is created without specifying a device, the default devices are used.
+
+Both devices and apis are simple dictionaries that contain information
+and configuration options. Many device options can be changed simply
+by modifying the dictionary before passing it to the stream
+constructor. This includes the number of channels, the desired
+latency, and the audio data format.
+
+PyAudio-CFFI is BSD licensed.
+(c) 2013, Bastian Bechtold
+
+"""
+
 ffi = FFI()
 ffi.cdef("""
 typedef int PaError;
