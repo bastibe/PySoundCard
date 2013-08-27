@@ -4,7 +4,7 @@ from distutils.core import setup
 
 setup(
     name='PySoundIO',
-    version='0.1',
+    version='0.2',
     description='An audio library based on PortAudio, CFFI and NumPy',
     author='Bastian Bechtold',
     author_email='basti@bastibe.de',

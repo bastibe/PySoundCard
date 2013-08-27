@@ -447,6 +447,15 @@ class Stream(object):
         if _pa:
             self._handle_error(_pa.Pa_CloseStream(self._stream[0]))
 
+    def __enter__(self):
+        # A context manager for convenience
+        self.start()
+        return self
+
+    def __exit__(self, type, value, tb):
+        # A context manager for convenience
+        self.stop()
+
     def start(self):
         """Commence audio processing.
 
