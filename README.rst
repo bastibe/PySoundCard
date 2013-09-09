@@ -67,7 +67,7 @@ immediately plays it back:
 
 .. code:: python
 
-    from pysoundio import Stream
+    from pysoundcard import Stream
 
     """Loop back five seconds of audio data."""
 
@@ -86,7 +86,7 @@ Here is another example that reads a wave file and plays it back:
     import sys
     import numpy as np
     from scipy.io.wavfile import read as wavread
-    from pysoundio import Stream
+    from pysoundcard import Stream
 
     """Play an audio file."""
 
@@ -116,7 +116,7 @@ synthesizers or filter-like audio effects.
 
 .. code:: python
 
-    from pysoundio import Stream, continue_flag
+    from pysoundcard import Stream, continue_flag
     import time
 
     """Loop back five seconds of audio data."""
@@ -140,7 +140,7 @@ available.
     import time
     import numpy as np
     from scipy.io.wavfile import read as wavread
-    from pysoundio import Stream, continue_flag, complete_flag
+    from pysoundcard import Stream, continue_flag, complete_flag
 
     """Play an audio file."""
 
@@ -192,7 +192,7 @@ context manager that makes things more convenient in simple cases:
 
 .. code:: python
 
-    from pysoundio import Stream, continue_flag
+    from pysoundcard import Stream, continue_flag
     import time
 
     """Loop back five seconds of audio data."""
