@@ -1,18 +1,18 @@
 =========
-PySoundIO
+PySoundCard
 =========
 
-PySoundIO is an audio library based on PortAudio, CFFI and NumPy
+PySoundCard is an audio library based on PortAudio, CFFI and NumPy
 
-PySoundIO can play and record audio data. Audio devices are supported
+PySoundCard can play and record audio data. Audio devices are supported
 through PortAudio_, which is a free, cross-platform, open-source audio
 I/O library that runs on may platforms including Windows, OS X, and
 Unix (OSS/ALSA). It is accessed through CFFI_, which is a foreign
 function interface for Python calling C code. CFFI is supported for
-CPython 2.6+, 3.x and PyPy 2.0+. PySoundIO represents audio data as
+CPython 2.6+, 3.x and PyPy 2.0+. PySoundCard represents audio data as
 NumPy arrays.
 
-PySoundIO is inspired by PyAudio_. Its main difference is that it uses
+PySoundCard is inspired by PyAudio_. Its main difference is that it uses
 CFFI instead of a CPython extension and tries to implement a more
 pythonic interface. Its performance characteristics are very similar.
 
@@ -20,14 +20,14 @@ pythonic interface. Its performance characteristics are very similar.
 .. _CFFI: http://cffi.readthedocs.org/
 .. _PyAudio: http://people.csail.mit.edu/hubert/pyaudio/
 
-| PySoundIO is BSD licensed.
+| PySoundCard is BSD licensed.
 | (c) 2013, Bastian Bechtold
 
 
 Prerequisites
 -------------
 
-You need to have PortAudio installed in order to use PySoundIO. On
+You need to have PortAudio installed in order to use PySoundCard. On
 Unix, use your package manager to install PortAudio. A good place to
 download PortAudio binaries for Windows is Andrew Fernandes' `Github
 project`_. On Windows, you need to rename the library to
@@ -41,7 +41,7 @@ Python installation.
 Usage
 -----
 
-The basic building block of audio input/output in PySoundIO are
+The basic building block of audio input/output in PySoundCard are
 streams. Streams represent sound cards, both for audio playback and
 recording. Every stream has a sample rate, a block size, an input
 device and/or an output device.
@@ -169,7 +169,7 @@ When to use Read/Write Mode or Callback Mode
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 In general, callback mode is the more flexible and powerful way of
-using PySoundIO. However, it is more complex and less performant.
+using PySoundCard. However, it is more complex and less performant.
 Many applications will require callback mode because of its threading.
 Also, it is very simple to write filter-like audio effects in callback
 mode since audio input and output are readily available.
@@ -207,7 +207,7 @@ context manager that makes things more convenient in simple cases:
 Performance
 ~~~~~~~~~~~
 
-PySoundIO uses the CFFI library internally. Performance is a big goal
+PySoundCard uses the CFFI library internally. Performance is a big goal
 for the project. On a reasonably recent Apple computer, block sizes of
 two or four samples should be no problem at a sampling rate of 44100
 or 48000 Hz.
@@ -221,7 +221,11 @@ performance.
 The Name
 ~~~~~~~~
 
-Wait, wasn't this called PyAudio-CFFI just a moment ago? Yes, since it
-originally started out as a re-implementation of PyAudio using the
-CFFI instead of a CPython extension. However, it quickly developed
-into something different, which warrants a different name.
+Wait, wasn't this called PyAudio-CFFI and PySoundIO just a moment ago?
+Yes, since it originally started out as a re-implementation of PyAudio
+using the CFFI instead of a CPython extension. However, it quickly
+developed into something different, which warrants a different name.
+However, PySoundIO turned out to be a name I seem to be incapable of
+remembering, which is a bad sign. Thus, I renamed it to PySoundCard.
+Also, PySoundCard sounds similar to PySoundFile, which I developed at
+the same time and which is quite similar in usage.

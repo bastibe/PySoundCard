@@ -3,14 +3,14 @@
 from distutils.core import setup
 
 setup(
-    name='PySoundIO',
-    version='0.2',
+    name='PySoundCard',
+    version='0.3',
     description='An audio library based on PortAudio, CFFI and NumPy',
     author='Bastian Bechtold',
     author_email='basti@bastibe.de',
-    url='https://github.com/bastibe/PySoundIO',
+    url='https://github.com/bastibe/PySoundCard',
     keywords=['audio', 'portaudio'],
-    py_modules=['pysoundio'],
+    py_modules=['pysoundcard'],
     license='BSD 3-Clause License',
     requires=['numpy',
               'cffi (>=0.6)'],
@@ -29,16 +29,16 @@ setup(
         'Topic :: Multimedia :: Sound/Audio'
     ],
     long_description='''
-    PySoundIO can play and record audio.
+    PySoundCard can play and record audio.
 
     Audio devices are supported through PortAudio_, which is a free,
     cross-platform, open-source audio I/O library that runs on many
     operating systems including Windows, OS X and Linux. It is
     accessed through CFFI_, which is a foreign function interface for
     Python calling C code. CFFI is supported for CPython 2.6+, 3.x and
-    PyPy 2.0+. PySoundIO represents audio data as NumPy arrays.
+    PyPy 2.0+. PySoundCard represents audio data as NumPy arrays.
 
-    You must have PortAudio installed in order to run PySoundIO.
+    You must have PortAudio installed in order to run PySoundCard.
 
     .. _PortAudio: http://www.portaudio.com/
     .. _CFFI: http://cffi.readthedocs.org/

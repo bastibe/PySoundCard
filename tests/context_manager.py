@@ -1,4 +1,4 @@
-from pysoundio import Stream, continue_flag
+from pysoundcard import Stream, continue_flag
 import time
 
 """Loop back five seconds of audio data."""

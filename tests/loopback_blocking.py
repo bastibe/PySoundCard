@@ -1,4 +1,4 @@
-from pysoundio import Stream
+from pysoundcard import Stream
 
 """Loop back five seconds of audio data."""
 

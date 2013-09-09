@@ -2,7 +2,7 @@ import sys
 import time
 import numpy as np
 from scipy.io.wavfile import read as wavread
-from pysoundio import Stream, continue_flag, complete_flag
+from pysoundcard import Stream, continue_flag, complete_flag
 
 """Play an audio file."""
 
