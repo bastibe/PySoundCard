@@ -1,6 +1,14 @@
 #!/usr/bin/env python
-
 from distutils.core import setup
+from sys import platform
+from platform import architecture
+
+if platform == 'win32' and architecture()[0] == '32bit':
+    portaudio = [('', ['win/portaudio32.dll'])]
+elif platform == 'win32' and architecture()[0] == '64bit':
+    portaudio = [('', ['win/portaudio64.dll'])]
+else:
+    portaudio = []
 
 setup(
     name='PySoundCard',
@@ -11,6 +19,7 @@ setup(
     url='https://github.com/bastibe/PySoundCard',
     keywords=['audio', 'portaudio'],
     py_modules=['pysoundcard'],
+    data_files=portaudio,
     license='BSD 3-Clause License',
     requires=['numpy',
               'cffi (>=0.6)'],

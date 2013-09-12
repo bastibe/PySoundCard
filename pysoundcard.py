@@ -1,3 +1,5 @@
+import sys
+import platform
 from cffi import FFI
 import atexit
 import numpy as np
@@ -201,7 +203,12 @@ _npsizeof = {
     np.uint8: 1
 }
 
-_pa = ffi.dlopen('portaudio')
+if sys.platform == 'win32' and platform.architecture()[0] == '32bit':
+    _pa = ffi.dlopen('portaudio32')
+elif sys.platform == 'win32' and platform.architecture()[0] == '64bit':
+    _pa = ffi.dlopen('portaudio64')
+else:
+    _pa = ffi.dlopen('portaudio')
 _pa.Pa_Initialize()
 
 @atexit.register
