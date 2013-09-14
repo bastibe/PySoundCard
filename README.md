@@ -71,7 +71,6 @@ stream without having to wait for it to play.
 Here is an example for a program that records a block of audio and
 immediately plays it back:
 
-```python
     from pysoundcard import Stream
 
     """Loop back five seconds of audio data."""
@@ -83,7 +82,6 @@ immediately plays it back:
     for n in range(int(fs*5/block_length)):
         s.write(s.read(block_length))
     s.stop()
-```
 
 Here is another example that reads a wave file and plays it back:
 
