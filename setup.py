@@ -2,11 +2,14 @@
 from distutils.core import setup
 from sys import platform
 from platform import architecture
+import shutil
 
 if platform == 'win32' and architecture()[0] == '32bit':
-    portaudio = [('', ['win/portaudio32.dll'])]
+    shutil.copy2('win/portaudio32.dll', 'win/portaudio.dll')
+    portaudio = [('', ['win/portaudio.dll', 'win/portaudio_license'])]
 elif platform == 'win32' and architecture()[0] == '64bit':
-    portaudio = [('', ['win/portaudio64.dll'])]
+    shutil.copy2('win/portaudio64.dll', 'win/portaudio.dll')
+    portaudio = [('', ['win/portaudio.dll', 'win/portaudio_license'])]
 else:
     portaudio = []
 
