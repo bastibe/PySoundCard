@@ -29,6 +29,7 @@ Installation
 On the Python side, you need to have CFFI and Numpy in order to use
 PySoundCard. Additionally, You need the library PortAudio installed on
 your computer. On Unix, use your package manager to install PortAudio.
+Then just install PySoundCard using pip or `python setup.py install`.
 
 If you are running Windows, I recommend using [WinPython][] or some
 similar distribution. This should set you up with Numpy. However, you
