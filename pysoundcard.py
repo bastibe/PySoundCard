@@ -451,8 +451,9 @@ class Stream(object):
         # At program shutdown, _pa is sometimes deleted before this
         # function is called. However, in that case, Pa_Terminate
         # already took care of closing all dangling streams.
-        if _pa:
+        if _pa and self._stream:
             self._handle_error(_pa.Pa_CloseStream(self._stream[0]))
+            self._stream = None
 
     def __enter__(self):
         self.start()
@@ -460,7 +461,7 @@ class Stream(object):
 
     def __exit__(self, type, value, tb):
         self.stop()
-        self._handle_error(_pa.Pa_CloseStream(self._stream[0]))
+        self.__del__()
 
     def start(self):
         """Commence audio processing.
