@@ -418,6 +418,13 @@ class Stream(object):
                                 ffi.NULL)
         self._handle_error(err)
 
+        # set some stream information
+        self.sample_rate = sample_rate
+        self.block_length = block_length
+        info = _pa.Pa_GetStreamInfo(self._stream[0])
+        self.input_latency = info.inputLatency,
+        self.output_latency = info.outputLatency,
+
         if finished_callback:
             def finished_callback_stub(userData):
                 finished_callback()
@@ -511,33 +518,6 @@ class Stream(object):
     def write_length(self):
         """The number of frames that can be read without waiting."""
         return _pa.Pa_GetStreamWriteAvailable(self._stream[0])
-
-    def info(self):
-        """Retrieve unchanging information about the open stream.
-
-        Returns a dictionary containing four fields:
-
-        struct_version: Always 1
-
-        input_latency: The most accurate estimate of the input latency
-        of the stream in seconds. The value will be zero for
-        output-only streams.
-
-        output_latency: The most accurate estimate of the output
-        latency of the stream in seconds. The value will be zero for
-        input-only streams.
-
-        sample_rate: The sample rate of the stream in Hz. In cases
-        where the hardware sample rate is inaccurate and portaudio is
-        aware of it, the value of this field may be different from the
-        sample_rate parameter passed to the stream constructor.
-
-        """
-        info = _pa.Pa_GetStreamInfo(self._stream[0])
-        return { 'struct_version': info.structVersion,
-                 'input_latency': info.inputLatency,
-                 'output_latency': info.outputLatency,
-                 'sample_rate': info.sampleRate }
 
     def time(self):
         """Returns the current stream time in seconds.
