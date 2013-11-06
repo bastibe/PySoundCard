@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from distutils.core import setup
+from setuptools import setup
 from sys import platform
 from platform import architecture
 import shutil
@@ -15,7 +15,7 @@ else:
 
 setup(
     name='PySoundCard',
-    version='0.4',
+    version='0.4.1',
     description='An audio library based on PortAudio, CFFI and NumPy',
     author='Bastian Bechtold',
     author_email='basti@bastibe.de',
@@ -24,8 +24,9 @@ setup(
     py_modules=['pysoundcard'],
     data_files=portaudio,
     license='BSD 3-Clause License',
-    requires=['numpy',
-              'cffi (>=0.6)'],
+    install_requires=['numpy',
+                      'cffi>=0.6',
+                      'docopt'],
     platforms='any',
     classifiers=[
         'Development Status :: 3 - Alpha',
