@@ -400,7 +400,7 @@ class Stream(object):
                                  _npsizeof[self.input_format] *
                                  num_frames)
                     input_data = \
-                        np.fromstring(ffi.buffer(input_ptr, num_bytes),
+                        np.frombuffer(ffi.buffer(input_ptr, num_bytes),
                                       dtype=self.input_format,
                                       count=num_frames*self.input_channels)
                     input_data = np.reshape(input_data,
@@ -583,7 +583,7 @@ class Stream(object):
         if raw:
             return data
         else:
-            data = np.fromstring(ffi.buffer(data), dtype=self.input_format,
+            data = np.frombuffer(ffi.buffer(data), dtype=self.input_format,
                                  count=num_frames*self.input_channels)
             return np.reshape(data, (num_frames, self.input_channels))
 
