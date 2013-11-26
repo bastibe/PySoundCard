@@ -600,14 +600,25 @@ class Stream(object):
         frames will be inferred from the array length. Data for
         different channels should be supplied in different columns.
 
+        If single-dimensional data is provided for a multi-channel
+        device, that channel will be played on all channels.
+
         """
         num_frames = num_frames or len(data)
         if isinstance(data, np.ndarray):
             if data.dtype != self.output_format:
                 data = np.array(data, dtype=self.output_format)
-            data = data.flatten().tostring()
+            data = data
         elif isinstance(data, list):
-            data = np.array(data, dtype=self.output_format).flatten().tostring()
+            data = np.array(data, dtype=self.output_format)
+        if len(data.shape) == 1 and self.output_channels != 1:
+            # replicate first channel and broadcast to (chan, 1)
+            data = np.tile(data, (self.output_channels, 1)).T
+        if data.shape[1] != self.output_channels:
+            error = 'Can not broadcast array of shape {} to {}'.format(
+                data.shape, (len(data), self.output_channels))
+            raise ValueError(error)
+        data = data.flatten().tostring()
         err = _pa.Pa_WriteStream(self._stream[0], data, num_frames)
         self._handle_error(err)
 
