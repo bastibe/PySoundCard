@@ -608,15 +608,14 @@ class Stream(object):
         if isinstance(data, np.ndarray):
             if data.dtype != self.output_format:
                 data = np.array(data, dtype=self.output_format)
-            data = data
         elif isinstance(data, list):
             data = np.array(data, dtype=self.output_format)
         if len(data.shape) == 1 and self.output_channels != 1:
             # replicate first channel and broadcast to (chan, 1)
             data = np.tile(data, (self.output_channels, 1)).T
-        if data.shape[1] != self.output_channels:
+        if data.shape != (num_frames, self.output_channels):
             error = 'Can not broadcast array of shape {} to {}'.format(
-                data.shape, (len(data), self.output_channels))
+                data.shape, (num_frames, self.output_channels))
             raise ValueError(error)
         data = data.flatten().tostring()
         err = _pa.Pa_WriteStream(self._stream[0], data, num_frames)
