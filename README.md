@@ -37,11 +37,11 @@ also need CFFI and it's dependency, PyCParser. A good place to get
 these are the [Unofficial Windows Binaries for Python][pybuilds].
 Having installed those, you can download the Windows installers for
 PySoundCard:
-
-[PySoundCard-0.4.win-amd64-py2.7](https://github.com/bastibe/PySoundCard/raw/master/dist/PySoundCard-0.4.win-amd64-py2.7.exe)  
-[PySoundCard-0.4.win-amd64-py3.3](https://github.com/bastibe/PySoundCard/raw/master/dist/PySoundCard-0.4.win-amd64-py3.3.exe)  
-[PySoundCard-0.4.win32-py2.7](https://github.com/bastibe/PySoundCard/raw/master/dist/PySoundCard-0.4.win32-py2.7.exe)  
-[PySoundCard-0.4.win32-py3.3](https://github.com/bastibe/PySoundCard/raw/master/dist/PySoundCard-0.4.win32-py3.3.exe)
+https://github.com/bastibe/PySoundCard/releases/download/0.4.3/PySoundCard-0.4.3.win-amd64-py2.7.exe
+[PySoundCard-0.4.win-amd64-py2.7](https://github.com/bastibe/PySoundCard/releases/download/0.4.3/PySoundCard-0.4.win-amd64-py2.7.exe)  
+[PySoundCard-0.4.win-amd64-py3.3](https://github.com/bastibe/PySoundCard/releases/download/0.4.3/PySoundCard-0.4.win-amd64-py3.3.exe)  
+[PySoundCard-0.4.win32-py2.7](https://github.com/bastibe/PySoundCard/releases/download/0.4.3/PySoundCard-0.4.win32-py2.7.exe)  
+[PySoundCard-0.4.win32-py3.3](https://github.com/bastibe/PySoundCard/releases/download/0.4.3/PySoundCard-0.4.win32-py3.3.exe)
 
 [WinPython]: https://code.google.com/p/winpython/
 [pybuilds]: http://www.lfd.uci.edu/~gohlke/pythonlibs/
