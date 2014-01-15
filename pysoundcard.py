@@ -213,15 +213,19 @@ def _terminate():
 def _api2dict(api, index):
     return { 'struct_version': api.structVersion,
              'type': api.type,
-             'name': ffi.string(api.name).decode(),
+             'name': ffi.string(api.name).decode(errors='ignore'),
              'api_idx': index,
              'device_count': api.deviceCount,
              'default_input_device_index': api.defaultInputDevice,
              'default_output_device_index': api.defaultOutputDevice }
 
 def _dev2dict(dev, index):
+    if 'DirectSound' in list(apis())[dev.hostApi]['name']:
+        enc = 'mbcs'
+    else:
+        enc = 'utf-8'
     return { 'struct_version': dev.structVersion,
-             'name': ffi.string(dev.name).decode(),
+             'name': ffi.string(dev.name).decode(encoding=enc, errors='ignore'),
              'device_index': index,
              'host_api_index': dev.hostApi,
              'input_channels': dev.maxInputChannels,
