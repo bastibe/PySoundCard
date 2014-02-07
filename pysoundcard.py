@@ -427,7 +427,7 @@ class Stream(object):
                         output_data = np.array(output_data,
                                                dtype=self.output_format)
                     output_buffer = ffi.buffer(output_ptr, num_bytes)
-                    output_buffer[:] = output_data.flatten().tostring()
+                    output_buffer[:] = output_data.ravel().tostring()
                 return flag
 
             self._callback = \
@@ -614,14 +614,16 @@ class Stream(object):
                 data = np.array(data, dtype=self.output_format)
         elif isinstance(data, list):
             data = np.array(data, dtype=self.output_format)
-        if len(data.shape) == 1 and self.output_channels != 1:
+        if (self.output_channels != 1 and
+            (len(data.shape) == 1 or
+            (len(data.shape) == 2 and data.shape[1] == 1))):
             # replicate first channel and broadcast to (chan, 1)
-            data = np.tile(data, (self.output_channels, 1)).T
+            data = np.tile(data.ravel(), (self.output_channels, 1)).T
         if data.shape != (num_frames, self.output_channels):
             error = 'Can not broadcast array of shape {} to {}'.format(
                 data.shape, (num_frames, self.output_channels))
             raise ValueError(error)
-        data = data.flatten().tostring()
+        data = data.ravel().tostring()
         err = _pa.Pa_WriteStream(self._stream[0], data, num_frames)
         self._handle_error(err)
 
