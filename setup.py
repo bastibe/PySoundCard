@@ -15,7 +15,7 @@ else:
 
 setup(
     name='PySoundCard',
-    version='0.4.4',
+    version='0.5.0',
     description='An audio library based on PortAudio, CFFI and NumPy',
     author='Bastian Bechtold',
     author_email='basti@bastibe.de',

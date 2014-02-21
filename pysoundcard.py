@@ -597,38 +597,45 @@ class Stream(object):
                                  count=num_frames*self.input_channels)
             return np.reshape(data, (num_frames, self.input_channels))
 
-    def write(self, data, num_frames=None):
+    def write(self, data):
         """Write samples to an output stream.
 
-        The functino does not return until the required number of
-        frames has been written. This may involve waiting for the
-        operating system to consume the data.
+        As much as one block_length of audio data will be played
+        without blocking. If more than one block_length was provided,
+        the function will only return when all but one block_length
+        has been played.
 
-        The data can either be supplied as a numpy array, a list, or
-        as raw bytes. Numpy arrays and lists will be automatically
-        converted to the appropriate data type and the number of
-        frames will be inferred from the array length. Data for
-        different channels should be supplied in different columns.
-
-        If single-dimensional data is provided for a multi-channel
-        device, that channel will be played on all channels.
+        Data will be converted to a numpy matrix. Multichannel data
+        should be provided as a (num_frames, channels) matrix. If the
+        data is provided as a 1-dim array, it will be treated as mono
+        data and will be played on all channels simultaneously. If the
+        data is provided as a 2-dim matrix and fewer tracks are
+        provided than channels, silence will be played on the missing
+        channels. Similarly, if more tracks are provided than there
+        are channels, the extraneous channels will not be played.
 
         """
-        num_frames = num_frames or len(data)
-        if isinstance(data, np.ndarray):
-            if data.dtype != self.output_format:
-                data = np.array(data, dtype=self.output_format)
-        elif isinstance(data, list):
+        num_frames = len(data)
+        num_channels = self.output_channels
+
+        if (not isinstance(data, np.ndarray) or
+            data.dtype != self.output_format):
             data = np.array(data, dtype=self.output_format)
-        if (self.output_channels != 1 and
-            (len(data.shape) == 1 or
-            (len(data.shape) == 2 and data.shape[1] == 1))):
-            # replicate first channel and broadcast to (chan, 1)
-            data = np.tile(data.ravel(), (self.output_channels, 1)).T
-        if data.shape != (num_frames, self.output_channels):
-            error = 'Can not broadcast array of shape {} to {}'.format(
-                data.shape, (num_frames, self.output_channels))
-            raise ValueError(error)
+        if len(data.shape) == 1:
+            # broadcast 1D arrays to (n,1) matrices
+            data = np.asmatrix(data).T
+        elif len(data.shape) == 2 and data.shape[1] == 1:
+            # play mono signals on all channels
+            data = np.tile(data, (1, num_channels))
+        if data.shape[1] > num_channels:
+            data = data[:, :num_channels]
+        if data.shape < (num_frames, num_channels):
+            # if less data is available than requested, pad with zeros.
+            tmp = data
+            data = np.zeros((num_frames, num_channels),
+                            dtype=self.output_format)
+            data[:tmp.shape[0],:tmp.shape[1]] = tmp
+
         data = data.ravel().tostring()
         err = _pa.Pa_WriteStream(self._stream[0], data, num_frames)
         self._handle_error(err)
