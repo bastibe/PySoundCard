@@ -211,6 +211,8 @@ def _terminate():
     _pa = None
 
 def _api2dict(api, index):
+    if api == ffi.NULL:
+        raise RuntimeError("Invalid host API info!")
     return { 'struct_version': api.structVersion,
              'type': api.type,
              'name': ffi.string(api.name).decode(errors='ignore'),
@@ -220,6 +222,8 @@ def _api2dict(api, index):
              'default_output_device_index': api.defaultOutputDevice }
 
 def _dev2dict(dev, index):
+    if dev == ffi.NULL:
+        raise RuntimeError("Invalid device info!")
     if 'DirectSound' in list(apis())[dev.hostApi]['name']:
         enc = 'mbcs'
     else:
@@ -448,6 +452,8 @@ class Stream(object):
         self.sample_rate = sample_rate
         self.block_length = block_length
         info = _pa.Pa_GetStreamInfo(self._stream[0])
+        if info == ffi.NULL:
+            raise RuntimeError("Could not obtain stream info!")
         self.input_latency = info.inputLatency,
         self.output_latency = info.outputLatency,
 
