@@ -401,43 +401,32 @@ class Stream(object):
             stream_flags |= 0x00000008
 
         if callback:
-            def callback_stub(input_ptr, output_ptr, num_frames, time_struct,
-                      status_flags, user_data):
-                if self.input_channels > 0:
-                    num_bytes = (self.input_channels *
-                                 _npsizeof[self.input_format] *
-                                 num_frames)
-                    input_data = \
-                        np.frombuffer(ffi.buffer(input_ptr, num_bytes),
-                                      dtype=self.input_format,
-                                      count=num_frames*self.input_channels)
-                    input_data = np.reshape(input_data,
-                                            (num_frames, self.input_channels))
+            @ffi.callback("PaStreamCallback")
+            def callback_stub(input_ptr, output_ptr, frames, time, status, _):
+                if self.input_channels < 1:
+                    input = None
                 else:
-                    input_data = None
+                    num_bytes = (self.input_channels *
+                                 _npsizeof[self.input_format] * frames)
+                    input = np.frombuffer(ffi.buffer(input_ptr, num_bytes),
+                                          dtype=self.input_format)
+                    input.shape = -1, self.input_channels
 
-                time_info = {'input_adc_time': time_struct.inputBufferAdcTime,
-                             'current_time': time_struct.currentTime,
-                             'output_dac_time': time_struct.outputBufferDacTime}
-
-                output_data, flag = callback(input_data, num_frames,
-                                             time_info, status_flags)
-
-                if self.output_channels > 0:
+                if self.output_channels < 1:
+                    output = None
+                else:
                     num_bytes = (self.output_channels *
-                                 _npsizeof[self.output_format] *
-                                 num_frames)
-                    if output_data.dtype != self.output_format:
-                        output_data = np.array(output_data,
-                                               dtype=self.output_format)
-                    output_buffer = ffi.buffer(output_ptr, num_bytes)
-                    output_buffer[:] = output_data.ravel().tostring()
-                return flag
+                                _npsizeof[self.output_format] * frames)
+                    output = np.frombuffer(ffi.buffer(output_ptr, num_bytes),
+                                           dtype=self.output_format)
+                    output.shape = -1, self.output_channels
 
-            self._callback = \
-                ffi.callback("int(const void*, void*, unsigned long, " +
-                             "const PaStreamCallbackTimeInfo*, " +
-                             "PaStreamCallbackFlags, void*)", callback_stub)
+                time = {'input_adc_time': time.inputBufferAdcTime,
+                        'current_time': time.currentTime,
+                        'output_dac_time': time.outputBufferDacTime}
+                return callback(input, output, time, status)
+
+            self._callback = callback_stub
         else:
             self._callback = ffi.NULL
 
