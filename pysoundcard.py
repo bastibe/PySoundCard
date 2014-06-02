@@ -203,12 +203,7 @@ _npsizeof = {
 
 _pa = ffi.dlopen('portaudio')
 _pa.Pa_Initialize()
-
-@atexit.register
-def _terminate():
-    global _pa
-    _pa.Pa_Terminate()
-    _pa = None
+atexit.register(_pa.Pa_Terminate)
 
 def _api2dict(api, index):
     if api == ffi.NULL:
@@ -469,6 +464,8 @@ class Stream(object):
                                                    self._finished_callback)
             self._handle_error(err)
 
+    # Avoid confusion if something goes wrong before assigning self._stream:
+    _stream = ffi.NULL
 
     def _handle_error(self, err):
         # all error codes are negative:
@@ -483,12 +480,8 @@ class Stream(object):
             raise RuntimeError("%.4f: %s" % (self.time(), errstr))
 
     def __del__(self):
-        # At program shutdown, _pa is sometimes deleted before this
-        # function is called. However, in that case, Pa_Terminate
-        # already took care of closing all dangling streams.
-        if _pa and self._stream:
-            self._handle_error(_pa.Pa_CloseStream(self._stream))
-            self._stream = None
+        # Close stream at garbage collection
+        self.close()
 
     def __enter__(self):
         self.start()
@@ -496,7 +489,7 @@ class Stream(object):
 
     def __exit__(self, type, value, tb):
         self.stop()
-        self.__del__()
+        self.close()
 
     def start(self):
         """Commence audio processing.
@@ -524,6 +517,21 @@ class Stream(object):
 
         """
         self._handle_error(_pa.Pa_AbortStream(self._stream))
+
+    def close(self):
+        """Close the stream.
+
+        Can be called multiple times.
+        If the audio stream is active any pending buffers are discarded
+        as if abort() had been called.
+
+        """
+        # At program shutdown, _pa is sometimes deleted before this
+        # function is called. However, in that case, Pa_Terminate
+        # already took care of closing all dangling streams.
+        _pa.Pa_CloseStream(self._stream)
+        # No errors are handled, it's too late anyway ...
+        self._stream = ffi.NULL
 
     def is_active(self):
         """Determine whether the stream is active.
