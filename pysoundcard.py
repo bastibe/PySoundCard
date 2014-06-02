@@ -63,6 +63,41 @@ PySoundCard is BSD licensed.
 ffi = FFI()
 ffi.cdef("""
 typedef int PaError;
+typedef enum PaErrorCode
+{
+    paNoError = 0,
+
+    paNotInitialized = -10000,
+    paUnanticipatedHostError,
+    paInvalidChannelCount,
+    paInvalidSampleRate,
+    paInvalidDevice,
+    paInvalidFlag,
+    paSampleFormatNotSupported,
+    paBadIODeviceCombination,
+    paInsufficientMemory,
+    paBufferTooBig,
+    paBufferTooSmall,
+    paNullCallback,
+    paBadStreamPtr,
+    paTimedOut,
+    paInternalError,
+    paDeviceUnavailable,
+    paIncompatibleHostApiSpecificStreamInfo,
+    paStreamIsStopped,
+    paStreamIsNotStopped,
+    paInputOverflowed,
+    paOutputUnderflowed,
+    paHostApiNotFound,
+    paInvalidHostApi,
+    paCanNotReadFromACallbackStream,
+    paCanNotWriteToACallbackStream,
+    paCanNotReadFromAnOutputOnlyStream,
+    paCanNotWriteToAnInputOnlyStream,
+    paIncompatibleStreamHostApi,
+    paBadBufferPtr
+} PaErrorCode;
+
 PaError Pa_Initialize(void);
 PaError Pa_Terminate(void);
 int Pa_GetVersion(void);
@@ -497,7 +532,10 @@ class Stream(object):
         If successful, the stream is considered active.
 
         """
-        self._handle_error(_pa.Pa_StartStream(self._stream))
+        err = _pa.Pa_StartStream(self._stream)
+        if err == _pa.paStreamIsNotStopped:
+            return
+        self._handle_error(err)
 
     def stop(self):
         """Terminate audio processing.
@@ -507,7 +545,10 @@ class Stream(object):
         inactive.
 
         """
-        self._handle_error(_pa.Pa_StopStream(self._stream))
+        err = _pa.Pa_StopStream(self._stream)
+        if err == _pa.paStreamIsStopped:
+            return
+        self._handle_error(err)
 
     def abort(self):
         """Terminate audio processing immediately.
@@ -516,7 +557,10 @@ class Stream(object):
         the stream is considered inactive.
 
         """
-        self._handle_error(_pa.Pa_AbortStream(self._stream))
+        err = _pa.Pa_AbortStream(self._stream)
+        if err == _pa.paStreamIsStopped:
+            return
+        self._handle_error(err)
 
     def close(self):
         """Close the stream.
