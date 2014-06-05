@@ -448,10 +448,13 @@ class Stream(object):
                                 ffi.NULL)
         self._handle_error(err)
 
+        # dereference PaStream** --> PaStream*
+        self._stream = self._stream[0]
+
         # set some stream information
         self.sample_rate = sample_rate
         self.block_length = block_length
-        info = _pa.Pa_GetStreamInfo(self._stream[0])
+        info = _pa.Pa_GetStreamInfo(self._stream)
         if info == ffi.NULL:
             raise RuntimeError("Could not obtain stream info!")
         self.input_latency = info.inputLatency,
@@ -462,7 +465,7 @@ class Stream(object):
                 finished_callback()
             self._finished_callback = ffi.callback("void(void*)",
                                                    finished_callback_stub)
-            err = _pa.Pa_SetStreamFinishedCallback(self._stream[0],
+            err = _pa.Pa_SetStreamFinishedCallback(self._stream,
                                                    self._finished_callback)
             self._handle_error(err)
 
@@ -484,7 +487,7 @@ class Stream(object):
         # function is called. However, in that case, Pa_Terminate
         # already took care of closing all dangling streams.
         if _pa and self._stream:
-            self._handle_error(_pa.Pa_CloseStream(self._stream[0]))
+            self._handle_error(_pa.Pa_CloseStream(self._stream))
             self._stream = None
 
     def __enter__(self):
@@ -501,7 +504,7 @@ class Stream(object):
         If successful, the stream is considered active.
 
         """
-        self._handle_error(_pa.Pa_StartStream(self._stream[0]))
+        self._handle_error(_pa.Pa_StartStream(self._stream))
 
     def stop(self):
         """Terminate audio processing.
@@ -511,7 +514,7 @@ class Stream(object):
         inactive.
 
         """
-        self._handle_error(_pa.Pa_StopStream(self._stream[0]))
+        self._handle_error(_pa.Pa_StopStream(self._stream))
 
     def abort(self):
         """Terminate audio processing immediately.
@@ -520,7 +523,7 @@ class Stream(object):
         the stream is considered inactive.
 
         """
-        self._handle_error(_pa.Pa_AbortStream(self._stream[0]))
+        self._handle_error(_pa.Pa_AbortStream(self._stream))
 
     def is_active(self):
         """Determine whether the stream is active.
@@ -530,7 +533,7 @@ class Stream(object):
         value other than continue from the stream callback.
 
         """
-        return self._handle_error(_pa.Pa_IsStreamActive(self._stream[0])) == 1
+        return self._handle_error(_pa.Pa_IsStreamActive(self._stream)) == 1
 
     def is_stopped(self):
         """Determine whether a stream is stopped.
@@ -541,15 +544,15 @@ class Stream(object):
         considered stopped.
 
         """
-        return self._handle_error(_pa.Pa_IsStreamStopped(self._stream[0])) == 1
+        return self._handle_error(_pa.Pa_IsStreamStopped(self._stream)) == 1
 
     def read_length(self):
         """The number of frames that can be written without waiting."""
-        return _pa.Pa_GetStreamReadAvailable(self._stream[0])
+        return _pa.Pa_GetStreamReadAvailable(self._stream)
 
     def write_length(self):
         """The number of frames that can be read without waiting."""
-        return _pa.Pa_GetStreamWriteAvailable(self._stream[0])
+        return _pa.Pa_GetStreamWriteAvailable(self._stream)
 
     def time(self):
         """Returns the current stream time in seconds.
@@ -560,7 +563,7 @@ class Stream(object):
         other events to the audio stream.
 
         """
-        return _pa.Pa_GetStreamTime(self._stream[0])
+        return _pa.Pa_GetStreamTime(self._stream)
 
     def cpu_load(self):
         """Retrieve CPU usage information for the specified stream.
@@ -572,7 +575,7 @@ class Stream(object):
         read/write streams.
 
         """
-        return _pa.Pa_GetStreamCpuLoad(self._stream[0])
+        return _pa.Pa_GetStreamCpuLoad(self._stream)
 
     def read(self, num_frames=1024, raw=False):
         """Read samples from an input stream.
@@ -588,7 +591,7 @@ class Stream(object):
         """
         num_bytes = self.input_channels*_npsizeof[self.input_format]*num_frames
         data = ffi.new("char[]", num_bytes)
-        err = _pa.Pa_ReadStream(self._stream[0], data, num_frames)
+        err = _pa.Pa_ReadStream(self._stream, data, num_frames)
         self._handle_error(err)
         if raw:
             return data
@@ -637,7 +640,7 @@ class Stream(object):
             data[:tmp.shape[0],:tmp.shape[1]] = tmp
 
         data = data.ravel().tostring()
-        err = _pa.Pa_WriteStream(self._stream[0], data, num_frames)
+        err = _pa.Pa_WriteStream(self._stream, data, num_frames)
         self._handle_error(err)
 
 
