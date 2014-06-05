@@ -331,21 +331,22 @@ class Stream(object):
 
         The callback should have a signature like this:
 
-        callback(input_data, num_frames, time_info, status_flags)
+        callback(input, output, time, status) -> flag
 
-        where input_data is the recorded data as a numpy array,
-        num_frames is the provided/requested number of frames,
-        time_info is a dictionary with some timing information, and
-        status_flags indicates whether input or output buffers have
+        where input is the recorded data as a NumPy array, output is
+        another NumPy array (with uninitialized content), where the data
+        for playback has to be written to (using indexing).
+        Either input or output can be None if the stream was started
+        without input or output device, respectively.
+        time is a dictionary with some timing information, and
+        status indicates whether input or output buffers have
         been inserted or dropped to overcome underflow or overflow
         conditions.
 
-        The function must return a tuple (output_data, flag), where
-        flag is one of continue_flag, complete_flag or abort_flag.
-        complete_flag and abort_flag act as if stop() or abort() had
-        been called. continue_flag resumes normal audio processing.
-        The output_data must be a numpy array with the appropriate
-        number of frames.
+        The function must return one of continue_flag, complete_flag or
+        abort_flag.  complete_flag and abort_flag act as if stop() or
+        abort() had been called, respectively.  continue_flag resumes
+        normal audio processing.
 
         The finished_callback should be a function with no arguments
         and no return values.
