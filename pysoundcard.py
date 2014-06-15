@@ -570,12 +570,10 @@ class Stream(object):
         as if abort() had been called.
 
         """
-        # At program shutdown, _pa is sometimes deleted before this
-        # function is called. However, in that case, Pa_Terminate
-        # already took care of closing all dangling streams.
         _pa.Pa_CloseStream(self._stream)
-        # No errors are handled, it's too late anyway ...
-        self._stream = ffi.NULL
+        # There might be errors if _pa.Pa_Terminate() has been called
+        # already or if the stream has been closed before.
+        # Those errors are ignored here, it's too late anyway ...
 
     def is_active(self):
         """Determine whether the stream is active.
