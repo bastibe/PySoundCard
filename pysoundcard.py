@@ -193,14 +193,6 @@ _np2pa = {
     np.uint8:   0x20
 }
 
-_npsizeof = {
-    np.float32: 4,
-    np.int32: 4,
-    np.int16: 2,
-    np.int8: 1,
-    np.uint8: 1
-}
-
 _pa = ffi.dlopen('portaudio')
 _pa.Pa_Initialize()
 
@@ -365,7 +357,7 @@ class Stream(object):
                           _np2pa[input_device['sample_format']],
                           input_device['input_latency'],
                           ffi.NULL ))
-            self.input_format = input_device['sample_format']
+            self.input_format = np.dtype(input_device['sample_format'])
             self.input_channels = stream_parameters_in.channelCount
             if stream_parameters_in and not input_device['interleaved_data']:
                 stream_parameters_in.sampleFormat |= 0x80000000
@@ -382,7 +374,7 @@ class Stream(object):
                           _np2pa[output_device['sample_format']],
                           output_device['output_latency'],
                           ffi.NULL ))
-            self.output_format = output_device['sample_format']
+            self.output_format = np.dtype(output_device['sample_format'])
             self.output_channels = stream_parameters_out.channelCount
             if stream_parameters_out and not output_device['interleaved_data']:
                 stream_parameters_out.sampleFormat |= 0x80000000
@@ -408,7 +400,7 @@ class Stream(object):
                     input = None
                 else:
                     num_bytes = (self.input_channels *
-                                 _npsizeof[self.input_format] * frames)
+                                 self.input_format.itemsize * frames)
                     input = np.frombuffer(ffi.buffer(input_ptr, num_bytes),
                                           dtype=self.input_format)
                     input.shape = -1, self.input_channels
@@ -417,7 +409,7 @@ class Stream(object):
                     output = None
                 else:
                     num_bytes = (self.output_channels *
-                                _npsizeof[self.output_format] * frames)
+                                 self.output_format.itemsize * frames)
                     output = np.frombuffer(ffi.buffer(output_ptr, num_bytes),
                                            dtype=self.output_format)
                     output.shape = -1, self.output_channels
@@ -579,7 +571,8 @@ class Stream(object):
         with one column per channel is returned.
 
         """
-        num_bytes = self.input_channels*_npsizeof[self.input_format]*num_frames
+        num_bytes = (self.input_channels * self.input_format.itemsize *
+                     num_frames)
         data = ffi.new("char[]", num_bytes)
         err = _pa.Pa_ReadStream(self._stream, data, num_frames)
         self._handle_error(err)
