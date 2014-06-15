@@ -63,6 +63,41 @@ PySoundCard is BSD licensed.
 ffi = FFI()
 ffi.cdef("""
 typedef int PaError;
+typedef enum PaErrorCode
+{
+    paNoError = 0,
+
+    paNotInitialized = -10000,
+    paUnanticipatedHostError,
+    paInvalidChannelCount,
+    paInvalidSampleRate,
+    paInvalidDevice,
+    paInvalidFlag,
+    paSampleFormatNotSupported,
+    paBadIODeviceCombination,
+    paInsufficientMemory,
+    paBufferTooBig,
+    paBufferTooSmall,
+    paNullCallback,
+    paBadStreamPtr,
+    paTimedOut,
+    paInternalError,
+    paDeviceUnavailable,
+    paIncompatibleHostApiSpecificStreamInfo,
+    paStreamIsStopped,
+    paStreamIsNotStopped,
+    paInputOverflowed,
+    paOutputUnderflowed,
+    paHostApiNotFound,
+    paInvalidHostApi,
+    paCanNotReadFromACallbackStream,
+    paCanNotWriteToACallbackStream,
+    paCanNotReadFromAnOutputOnlyStream,
+    paCanNotWriteToAnInputOnlyStream,
+    paIncompatibleStreamHostApi,
+    paBadBufferPtr
+} PaErrorCode;
+
 PaError Pa_Initialize(void);
 PaError Pa_Terminate(void);
 int Pa_GetVersion(void);
@@ -195,12 +230,7 @@ _np2pa = {
 
 _pa = ffi.dlopen('portaudio')
 _pa.Pa_Initialize()
-
-@atexit.register
-def _terminate():
-    global _pa
-    _pa.Pa_Terminate()
-    _pa = None
+atexit.register(_pa.Pa_Terminate)
 
 def _api2dict(api, index):
     if api == ffi.NULL:
@@ -451,6 +481,8 @@ class Stream(object):
                                                    self._finished_callback)
             self._handle_error(err)
 
+    # Avoid confusion if something goes wrong before assigning self._stream:
+    _stream = ffi.NULL
 
     def _handle_error(self, err):
         # all error codes are negative:
@@ -465,12 +497,8 @@ class Stream(object):
             raise RuntimeError("%.4f: %s" % (self.time(), errstr))
 
     def __del__(self):
-        # At program shutdown, _pa is sometimes deleted before this
-        # function is called. However, in that case, Pa_Terminate
-        # already took care of closing all dangling streams.
-        if _pa and self._stream:
-            self._handle_error(_pa.Pa_CloseStream(self._stream))
-            self._stream = None
+        # Close stream at garbage collection
+        self.close()
 
     def __enter__(self):
         self.start()
@@ -478,7 +506,7 @@ class Stream(object):
 
     def __exit__(self, type, value, tb):
         self.stop()
-        self.__del__()
+        self.close()
 
     def start(self):
         """Commence audio processing.
@@ -486,7 +514,10 @@ class Stream(object):
         If successful, the stream is considered active.
 
         """
-        self._handle_error(_pa.Pa_StartStream(self._stream))
+        err = _pa.Pa_StartStream(self._stream)
+        if err == _pa.paStreamIsNotStopped:
+            return
+        self._handle_error(err)
 
     def stop(self):
         """Terminate audio processing.
@@ -496,7 +527,10 @@ class Stream(object):
         inactive.
 
         """
-        self._handle_error(_pa.Pa_StopStream(self._stream))
+        err = _pa.Pa_StopStream(self._stream)
+        if err == _pa.paStreamIsStopped:
+            return
+        self._handle_error(err)
 
     def abort(self):
         """Terminate audio processing immediately.
@@ -505,7 +539,23 @@ class Stream(object):
         the stream is considered inactive.
 
         """
-        self._handle_error(_pa.Pa_AbortStream(self._stream))
+        err = _pa.Pa_AbortStream(self._stream)
+        if err == _pa.paStreamIsStopped:
+            return
+        self._handle_error(err)
+
+    def close(self):
+        """Close the stream.
+
+        Can be called multiple times.
+        If the audio stream is active any pending buffers are discarded
+        as if abort() had been called.
+
+        """
+        _pa.Pa_CloseStream(self._stream)
+        # There might be errors if _pa.Pa_Terminate() has been called
+        # already or if the stream has been closed before.
+        # Those errors are ignored here, it's too late anyway ...
 
     def is_active(self):
         """Determine whether the stream is active.
