@@ -73,38 +73,38 @@ Here is an example for a program that records a block of audio and
 immediately plays it back:
 
 ```python
-    from pysoundcard import Stream
+from pysoundcard import Stream
 
-    """Loop back five seconds of audio data."""
+"""Loop back five seconds of audio data."""
 
-    fs = 44100
-    block_length = 16
-    s = Stream(sample_rate=fs, block_length=block_length)
-    s.start()
-    for n in range(int(fs*5/block_length)):
-        s.write(s.read(block_length))
-    s.stop()
+fs = 44100
+block_length = 16
+s = Stream(sample_rate=fs, block_length=block_length)
+s.start()
+for n in range(int(fs*5/block_length)):
+    s.write(s.read(block_length))
+s.stop()
 ```
 
 Here is another example that reads a wave file and plays it back:
 
 ```python
-    import sys
-    import numpy as np
-    from scipy.io.wavfile import read as wavread
-    from pysoundcard import Stream
+import sys
+import numpy as np
+from scipy.io.wavfile import read as wavread
+from pysoundcard import Stream
 
-    """Play an audio file."""
+"""Play an audio file."""
 
-    fs, wave = wavread(sys.argv[1])
-    wave = np.array(wave, dtype=np.float32)
-    wave /= 2**15 # normalize -max_int16..max_int16 to -1..1
+fs, wave = wavread(sys.argv[1])
+wave = np.array(wave, dtype=np.float32)
+wave /= 2**15 # normalize -max_int16..max_int16 to -1..1
 
-    block_length = 16
-    s = Stream(sample_rate=fs, block_length=block_length)
-    s.start()
-    s.write(wave)
-    s.stop()
+block_length = 16
+s = Stream(sample_rate=fs, block_length=block_length)
+s.start()
+s.write(wave)
+s.stop()
 ```
 
 
@@ -121,20 +121,19 @@ the callback is running in a different thread. This is very useful for
 synthesizers or filter-like audio effects.
 
 ```python
+from pysoundcard import Stream, continue_flag
+import time
 
-    from pysoundcard import Stream, continue_flag
-    import time
+"""Loop back five seconds of audio data."""
 
-    """Loop back five seconds of audio data."""
+def callback(in_data, out_data, time_info, status):
+    out_data[:] = in_data
+    return continue_flag
 
-    def callback(in_data, out_data, time_info, status):
-        out_data[:] = in_data
-        return continue_flag
-
-    s = Stream(sample_rate=44100, block_length=16, callback=callback)
-    s.start()
-    time.sleep(5)
-    s.stop()
+s = Stream(sample_rate=44100, block_length=16, callback=callback)
+s.start()
+time.sleep(5)
+s.stop()
 ```
 
 ### When to use Read/Write Mode or Callback Mode
@@ -161,17 +160,17 @@ In addition to the `start()` and `stop()` methods, there is also a
 context manager that makes things more convenient in simple cases:
 
 ```python
-    from pysoundcard import Stream, continue_flag
-    import time
+from pysoundcard import Stream, continue_flag
+import time
 
-    """Loop back five seconds of audio data."""
+"""Loop back five seconds of audio data."""
 
-    def callback(in_data, out_data, time_info, status):
-        out_data[:] = in_data
-        return continue_flag
+def callback(in_data, out_data, time_info, status):
+    out_data[:] = in_data
+    return continue_flag
 
-    with Stream(sample_rate=44100, block_length=16, callback=callback):
-        time.sleep(5)
+with Stream(sample_rate=44100, block_length=16, callback=callback):
+    time.sleep(5)
 ```
 
 
