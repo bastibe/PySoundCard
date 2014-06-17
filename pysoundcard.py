@@ -215,16 +215,18 @@ _pa = ffi.dlopen('portaudio')
 _pa.Pa_Initialize()
 atexit.register(_pa.Pa_Terminate)
 
+
 def _api2dict(api, index):
     if api == ffi.NULL:
         raise RuntimeError("Invalid host API info!")
-    return { 'struct_version': api.structVersion,
-             'type': api.type,
-             'name': ffi.string(api.name).decode(errors='ignore'),
-             'api_idx': index,
-             'device_count': api.deviceCount,
-             'default_input_device_index': api.defaultInputDevice,
-             'default_output_device_index': api.defaultOutputDevice }
+    return {'struct_version': api.structVersion,
+            'type': api.type,
+            'name': ffi.string(api.name).decode(errors='ignore'),
+            'api_idx': index,
+            'device_count': api.deviceCount,
+            'default_input_device_index': api.defaultInputDevice,
+            'default_output_device_index': api.defaultOutputDevice}
+
 
 def _dev2dict(dev, index):
     if dev == ffi.NULL:
@@ -233,21 +235,21 @@ def _dev2dict(dev, index):
         enc = 'mbcs'
     else:
         enc = 'utf-8'
-    return { 'struct_version': dev.structVersion,
-             'name': ffi.string(dev.name).decode(encoding=enc, errors='ignore'),
-             'device_index': index,
-             'host_api_index': dev.hostApi,
-             'input_channels': dev.maxInputChannels,
-             'output_channels': dev.maxOutputChannels,
-             'default_low_input_latency': dev.defaultLowInputLatency,
-             'default_low_output_latency': dev.defaultLowOutputLatency,
-             'default_high_input_latency': dev.defaultHighInputLatency,
-             'default_high_output_latency': dev.defaultHighOutputLatency,
-             'default_sample_rate': dev.defaultSampleRate,
-             'input_latency': dev.defaultLowInputLatency,
-             'output_latency': dev.defaultLowOutputLatency,
-             'sample_format': np.float32,
-             'interleaved_data': True }
+    return {'struct_version': dev.structVersion,
+            'name': ffi.string(dev.name).decode(encoding=enc, errors='ignore'),
+            'device_index': index,
+            'host_api_index': dev.hostApi,
+            'input_channels': dev.maxInputChannels,
+            'output_channels': dev.maxOutputChannels,
+            'default_low_input_latency': dev.defaultLowInputLatency,
+            'default_low_output_latency': dev.defaultLowOutputLatency,
+            'default_high_input_latency': dev.defaultHighInputLatency,
+            'default_high_output_latency': dev.defaultHighOutputLatency,
+            'default_sample_rate': dev.defaultSampleRate,
+            'input_latency': dev.defaultLowInputLatency,
+            'output_latency': dev.defaultLowOutputLatency,
+            'sample_format': np.float32,
+            'interleaved_data': True}
 
 
 def apis():
@@ -365,11 +367,11 @@ class Stream(object):
         if input_device:
             stream_parameters_in = \
                 ffi.new("PaStreamParameters*",
-                        ( input_device['device_index'],
-                          input_device['input_channels'],
-                          _np2pa[input_device['sample_format']],
-                          input_device['input_latency'],
-                          ffi.NULL ))
+                        (input_device['device_index'],
+                         input_device['input_channels'],
+                         _np2pa[input_device['sample_format']],
+                         input_device['input_latency'],
+                         ffi.NULL))
             self.input_format = np.dtype(input_device['sample_format'])
             self.input_channels = stream_parameters_in.channelCount
             if stream_parameters_in and not input_device['interleaved_data']:
@@ -382,11 +384,11 @@ class Stream(object):
         if output_device:
             stream_parameters_out = \
                 ffi.new("PaStreamParameters*",
-                        ( output_device['device_index'],
-                          output_device['output_channels'],
-                          _np2pa[output_device['sample_format']],
-                          output_device['output_latency'],
-                          ffi.NULL ))
+                        (output_device['device_index'],
+                         output_device['output_channels'],
+                         _np2pa[output_device['sample_format']],
+                         output_device['output_latency'],
+                         ffi.NULL))
             self.output_format = np.dtype(output_device['sample_format'])
             self.output_channels = stream_parameters_out.channelCount
             if stream_parameters_out and not output_device['interleaved_data']:
@@ -469,7 +471,8 @@ class Stream(object):
 
     def _handle_error(self, err):
         # all error codes are negative:
-        if err >= 0: return err
+        if err >= 0:
+            return err
         errstr = ffi.string(_pa.Pa_GetErrorText(err)).decode()
         if err == -9981 or err == -9980:
             # InputOverflowed and OuputUnderflowed are non-fatal:
@@ -638,7 +641,7 @@ class Stream(object):
         num_channels = self.output_channels
 
         if (not isinstance(data, np.ndarray) or
-            data.dtype != self.output_format):
+                data.dtype != self.output_format):
             data = np.array(data, dtype=self.output_format)
         if len(data.shape) == 1:
             # broadcast 1D arrays to (n,1) matrices
@@ -653,7 +656,7 @@ class Stream(object):
             tmp = data
             data = np.zeros((num_frames, num_channels),
                             dtype=self.output_format)
-            data[:tmp.shape[0],:tmp.shape[1]] = tmp
+            data[:tmp.shape[0], :tmp.shape[1]] = tmp
 
         data = data.ravel().tostring()
         err = _pa.Pa_WriteStream(self._stream, data, num_frames)
@@ -667,6 +670,7 @@ if __name__ == '__main__':
     wave = np.array(wave, dtype=np.float32)
     wave /= 2**15
     block_length = 4
+
     def callback(in_data, frame_count, time_info, status):
         if status != 0:
             print(status)
