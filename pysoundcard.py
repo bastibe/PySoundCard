@@ -594,7 +594,7 @@ class Stream(object):
         """
         return _pa.Pa_GetStreamCpuLoad(self._stream)
 
-    def read(self, num_frames=1024, raw=False):
+    def read(self, num_frames, raw=False):
         """Read samples from an input stream.
 
         The function does not return until the required number of
