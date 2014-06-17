@@ -473,10 +473,10 @@ class Stream(object):
         self.output_latency = info.outputLatency,
 
         if finished_callback:
+            @ffi.callback("PaStreamFinishedCallback")
             def finished_callback_stub(userData):
                 finished_callback()
-            self._finished_callback = ffi.callback("void(void*)",
-                                                   finished_callback_stub)
+            self._finished_callback = finished_callback_stub
             err = _pa.Pa_SetStreamFinishedCallback(self._stream,
                                                    self._finished_callback)
             self._handle_error(err)
