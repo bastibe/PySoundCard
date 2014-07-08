@@ -136,6 +136,18 @@ time.sleep(5)
 s.stop()
 ```
 
+The callback signature has changed since the last release on
+PyPi. We are currently working on a new release with the above
+signature. If you are running PySoundCard from PyPi (v0.5.0), use this
+code instead:
+
+
+```python
+def callback(in_data, time_info, status):
+    return (out_data, continue_flag)
+```
+
+
 ### When to use Read/Write Mode or Callback Mode
 
 In general, callback mode is the more flexible and powerful way of
@@ -171,6 +183,17 @@ def callback(in_data, out_data, time_info, status):
 
 with Stream(sample_rate=44100, block_length=16, callback=callback):
     time.sleep(5)
+```
+
+The callback signature has changed since the last release on
+PyPi. We are currently working on a new release with the above
+signature. If you are running PySoundCard from PyPi (v0.5.0), use this
+code instead:
+
+
+```python
+def callback(in_data, time_info, status):
+    return (out_data, continue_flag)
 ```
 
 
