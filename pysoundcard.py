@@ -594,7 +594,7 @@ class Stream(object):
         """
         return _pa.Pa_GetStreamCpuLoad(self._stream)
 
-    def read(self, num_frames, raw=False):
+    def read(self, frames, raw=False):
         """Read samples from an input stream.
 
         The function does not return until the required number of
@@ -606,10 +606,9 @@ class Stream(object):
         with one column per channel is returned.
 
         """
-        num_bytes = (self.input_channels * self.input_format.itemsize *
-                     num_frames)
+        num_bytes = (self.input_channels * self.input_format.itemsize * frames)
         data = ffi.new("signed char[]", num_bytes)
-        self._handle_error(_pa.Pa_ReadStream(self._stream, data, num_frames))
+        self._handle_error(_pa.Pa_ReadStream(self._stream, data, frames))
         if not raw:
             data = np.frombuffer(ffi.buffer(data), dtype=self.input_format)
             data.shape = frames, self.input_channels
@@ -624,7 +623,7 @@ class Stream(object):
         has been played.
 
         Data will be converted to a numpy matrix. Multichannel data
-        should be provided as a (num_frames, channels) matrix. If the
+        should be provided as a (frames, channels) matrix. If the
         data is provided as a 1-dim array, it will be treated as mono
         data and will be played on all channels simultaneously. If the
         data is provided as a 2-dim matrix and fewer tracks are
@@ -633,8 +632,8 @@ class Stream(object):
         are channels, the extraneous channels will not be played.
 
         """
-        num_frames = len(data)
-        num_channels = self.output_channels
+        frames = len(data)
+        channels = self.output_channels
 
         if (not isinstance(data, np.ndarray) or
                 data.dtype != self.output_format):
@@ -644,18 +643,17 @@ class Stream(object):
             data = np.asmatrix(data).T
         elif len(data.shape) == 2 and data.shape[1] == 1:
             # play mono signals on all channels
-            data = np.tile(data, (1, num_channels))
-        if data.shape[1] > num_channels:
-            data = data[:, :num_channels]
-        if data.shape < (num_frames, num_channels):
+            data = np.tile(data, (1, channels))
+        if data.shape[1] > channels:
+            data = data[:, :channels]
+        if data.shape < (frames, channels):
             # if less data is available than requested, pad with zeros.
             tmp = data
-            data = np.zeros((num_frames, num_channels),
-                            dtype=self.output_format)
+            data = np.zeros((frames, channels), dtype=self.output_format)
             data[:tmp.shape[0], :tmp.shape[1]] = tmp
 
         data = data.ravel().tostring()
-        err = _pa.Pa_WriteStream(self._stream, data, num_frames)
+        err = _pa.Pa_WriteStream(self._stream, data, frames)
         self._handle_error(err)
 
 
