@@ -313,13 +313,11 @@ class Stream(object):
 
     """
 
-    def __init__(self, samplerate=44100, blocksize=0,
+    def __init__(self, samplerate=None, blocksize=0,
                  input_device=True, output_device=True,
                  callback=None, finished_callback=None,
                  **flags):
         """Open a new stream.
-
-        If no sample rate is given, 44100 Hz is assumed.
 
         If no input or output device (or True) is specified, the
         default input/output device is taken. For input/output-only
