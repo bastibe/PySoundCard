@@ -245,7 +245,7 @@ def _dev2dict(dev, index):
             'default_low_output_latency': dev.defaultLowOutputLatency,
             'default_high_input_latency': dev.defaultHighInputLatency,
             'default_high_output_latency': dev.defaultHighOutputLatency,
-            'default_sample_rate': dev.defaultSampleRate,
+            'default_samplerate': dev.defaultSampleRate,
             'input_latency': dev.defaultLowInputLatency,
             'output_latency': dev.defaultLowOutputLatency,
             'sample_format': np.float32,
@@ -313,7 +313,7 @@ class Stream(object):
 
     """
 
-    def __init__(self, sample_rate=44100, block_length=0,
+    def __init__(self, samplerate=44100, blocksize=0,
                  input_device=True, output_device=True,
                  callback=None, finished_callback=None,
                  **flags):
@@ -439,8 +439,8 @@ class Stream(object):
 
         self._stream = ffi.new("PaStream**")
         err = _pa.Pa_OpenStream(self._stream, stream_parameters_in or ffi.NULL,
-                                stream_parameters_out or ffi.NULL, sample_rate,
-                                block_length, stream_flags, self._callback,
+                                stream_parameters_out or ffi.NULL, samplerate,
+                                blocksize, stream_flags, self._callback,
                                 ffi.NULL)
         self._handle_error(err)
 
@@ -448,8 +448,8 @@ class Stream(object):
         self._stream = self._stream[0]
 
         # set some stream information
-        self.sample_rate = sample_rate
-        self.block_length = block_length
+        self.samplerate = samplerate
+        self.blocksize = blocksize
         info = _pa.Pa_GetStreamInfo(self._stream)
         if info == ffi.NULL:
             raise RuntimeError("Could not obtain stream info!")
@@ -618,9 +618,9 @@ class Stream(object):
     def write(self, data):
         """Write samples to an output stream.
 
-        As much as one block_length of audio data will be played
-        without blocking. If more than one block_length was provided,
-        the function will only return when all but one block_length
+        As much as one blocksize of audio data will be played
+        without blocking. If more than one blocksize was provided,
+        the function will only return when all but one blocksize
         has been played.
 
         Data will be converted to a numpy matrix. Multichannel data
@@ -662,17 +662,17 @@ if __name__ == '__main__':
     fs, wave = wavread('thistle.wav')
     wave = np.array(wave, dtype=np.float32)
     wave /= 2**15
-    block_length = 4
+    blocksize = 4
 
     def callback(in_data, frame_count, time_info, status):
         if status != 0:
             print(status)
         return (in_data, continue_flag)
-    s = Stream(sample_rate=fs, block_length=block_length, callback=callback)
+    s = Stream(samplerate=fs, blocksize=blocksize, callback=callback)
     s.start()
-    # for n in range(int(fs*5/block_length)):
-    #     s.write(s.read(block_length))
-    # for idx in range(0, wave.size, block_length):
-    #     s.write(wave[idx:idx+block_length])
+    # for n in range(int(fs*5/blocksize)):
+    #     s.write(s.read(blocksize))
+    # for idx in range(0, wave.size, blocksize):
+    #     s.write(wave[idx:idx+blocksize])
     time.sleep(5)
     s.stop()

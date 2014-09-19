@@ -9,8 +9,8 @@ fs, wave = wavread(sys.argv[1])
 wave = np.array(wave, dtype=np.float32)
 wave /= 2 ** 15  # normalize -max_int16..max_int16 to -1..1
 
-block_length = 16
-s = Stream(sample_rate=fs, block_length=block_length)
+blocksize = 16
+s = Stream(samplerate=fs, blocksize=blocksize)
 s.start()
 s.write(wave)
 s.stop()
