@@ -78,11 +78,11 @@ from pysoundcard import Stream
 """Loop back five seconds of audio data."""
 
 fs = 44100
-block_length = 16
-s = Stream(sample_rate=fs, block_length=block_length)
+blocksize = 16
+s = Stream(samplerate=fs, blocksize=blocksize)
 s.start()
-for n in range(int(fs*5/block_length)):
-    s.write(s.read(block_length))
+for n in range(int(fs*5/blocksize)):
+    s.write(s.read(blocksize))
 s.stop()
 ```
 
@@ -100,8 +100,8 @@ fs, wave = wavread(sys.argv[1])
 wave = np.array(wave, dtype=np.float32)
 wave /= 2**15 # normalize -max_int16..max_int16 to -1..1
 
-block_length = 16
-s = Stream(sample_rate=fs, block_length=block_length)
+blocksize = 16
+s = Stream(samplerate=fs, blocksize=blocksize)
 s.start()
 s.write(wave)
 s.stop()
@@ -130,7 +130,7 @@ def callback(in_data, out_data, time_info, status):
     out_data[:] = in_data
     return continue_flag
 
-s = Stream(sample_rate=44100, block_length=16, callback=callback)
+s = Stream(samplerate=44100, blocksize=16, callback=callback)
 s.start()
 time.sleep(5)
 s.stop()
@@ -181,7 +181,7 @@ def callback(in_data, out_data, time_info, status):
     out_data[:] = in_data
     return continue_flag
 
-with Stream(sample_rate=44100, block_length=16, callback=callback):
+with Stream(samplerate=44100, blocksize=16, callback=callback):
     time.sleep(5)
 ```
 
