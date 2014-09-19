@@ -652,25 +652,3 @@ class Stream(object):
         data = data.ravel().tostring()
         err = _pa.Pa_WriteStream(self._stream, data, frames)
         self._handle_error(err)
-
-
-if __name__ == '__main__':
-    from scipy.io.wavfile import read as wavread
-    import time
-    fs, wave = wavread('thistle.wav')
-    wave = np.array(wave, dtype=np.float32)
-    wave /= 2**15
-    blocksize = 4
-
-    def callback(in_data, frame_count, time_info, status):
-        if status != 0:
-            print(status)
-        return (in_data, continue_flag)
-    s = Stream(samplerate=fs, blocksize=blocksize, callback=callback)
-    s.start()
-    # for n in range(int(fs*5/blocksize)):
-    #     s.write(s.read(blocksize))
-    # for idx in range(0, wave.size, blocksize):
-    #     s.write(wave[idx:idx+blocksize])
-    time.sleep(5)
-    s.stop()
