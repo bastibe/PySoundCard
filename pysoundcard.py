@@ -609,7 +609,7 @@ class Stream(object):
         num_bytes = (self.input_channels * self.input_format.itemsize *
                      num_frames)
         data = ffi.new("signed char[]", num_bytes)
-        self._handle_error(_pa.Pa_ReadStream(self._stream, data, frames))
+        self._handle_error(_pa.Pa_ReadStream(self._stream, data, num_frames))
         if not raw:
             data = np.frombuffer(ffi.buffer(data), dtype=self.input_format)
             data.shape = frames, self.input_channels
