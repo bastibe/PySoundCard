@@ -451,8 +451,8 @@ class Stream(object):
         info = _pa.Pa_GetStreamInfo(self._stream)
         if info == ffi.NULL:
             raise RuntimeError("Could not obtain stream info!")
-        self.input_latency = info.inputLatency,
-        self.output_latency = info.outputLatency,
+        self.input_latency = info.inputLatency
+        self.output_latency = info.outputLatency
 
         if finished_callback:
             @ffi.callback("PaStreamFinishedCallback")
