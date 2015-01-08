@@ -463,12 +463,28 @@ class _StreamBase(object):
         return _pa.Pa_GetStreamCpuLoad(self._stream)
 
 
-class _Reader(object):
+class InputStream(_StreamBase):
 
-    """Mixin for read() and read_length()."""
+    """Stream for recording only.  See :class:`Stream`."""
+
+    def __init__(self, samplerate=None, blocksize=None,
+                 device=None, channels=None, dtype=None, latency=None,
+                 callback=None, finished_callback=None, **flags):
+        parameters, self.dtype, samplerate = _get_stream_parameters(
+            'input', device, channels, dtype, latency, samplerate)
+        self.device = parameters.device
+        self.channels = parameters.channelCount
+
+        def callback_wrapper(iptr, optr, frames, time, status, _):
+            data = _frombuffer(iptr, frames, self.channels, self.dtype)
+            return callback(data, _time2dict(time), status)
+
+        _StreamBase.__init__(self, parameters, ffi.NULL, samplerate,
+                             blocksize, callback and callback_wrapper,
+                             finished_callback, **flags)
 
     def read_length(self):
-        """The number of frames that can be written without waiting."""
+        """The number of frames that can be read without waiting."""
         return _pa.Pa_GetStreamReadAvailable(self._stream)
 
     def read(self, frames, raw=False):
@@ -493,12 +509,28 @@ class _Reader(object):
         return data
 
 
-class _Writer(object):
+class OutputStream(_StreamBase):
 
-    """Mixin for write() and write_length():"""
+    """Stream for playback only.  See :class:`Stream`."""
+
+    def __init__(self, samplerate=None, blocksize=None,
+                 device=None, channels=None, dtype=None, latency=None,
+                 callback=None, finished_callback=None, **flags):
+        parameters, self.dtype, samplerate = _get_stream_parameters(
+            'output', device, channels, dtype, latency, samplerate)
+        self.device = parameters.device
+        self.channels = parameters.channelCount
+
+        def callback_wrapper(iptr, optr, frames, time, status, _):
+            data = _frombuffer(optr, frames, self.channels, self.dtype)
+            return callback(data, _time2dict(time), status)
+
+        _StreamBase.__init__(self, ffi.NULL, parameters, samplerate,
+                             blocksize, callback and callback_wrapper,
+                             finished_callback, **flags)
 
     def write_length(self):
-        """The number of frames that can be read without waiting."""
+        """The number of frames that can be written without waiting."""
         return _pa.Pa_GetStreamWriteAvailable(self._stream)
 
     def write(self, data):
@@ -544,7 +576,7 @@ class _Writer(object):
         self._handle_error(err)
 
 
-class Stream(_StreamBase, _Reader, _Writer):
+class Stream(InputStream, OutputStream):
 
     """Streams handle audio input and output to your application.
 
@@ -630,42 +662,6 @@ class Stream(_StreamBase, _Reader, _Writer):
             return callback(idata, odata, _time2dict(time), status)
 
         _StreamBase.__init__(self, iparameters, oparameters, samplerate,
-                             blocksize, callback and callback_wrapper,
-                             finished_callback, **flags)
-
-
-class InputStream(_StreamBase, _Reader):
-    def __init__(self, samplerate=None, blocksize=None,
-                 device=None, channels=None, dtype=None, latency=None,
-                 callback=None, finished_callback=None, **flags):
-        parameters, self.dtype, samplerate = _get_stream_parameters(
-            'input', device, channels, dtype, latency, samplerate)
-        self.device = parameters.device
-        self.channels = parameters.channelCount
-
-        def callback_wrapper(iptr, optr, frames, time, status, _):
-            data = _frombuffer(iptr, frames, self.channels, self.dtype)
-            return callback(data, _time2dict(time), status)
-
-        _StreamBase.__init__(self, parameters, ffi.NULL, samplerate,
-                             blocksize, callback and callback_wrapper,
-                             finished_callback, **flags)
-
-
-class OutputStream(_StreamBase, _Writer):
-    def __init__(self, samplerate=None, blocksize=None,
-                 device=None, channels=None, dtype=None, latency=None,
-                 callback=None, finished_callback=None, **flags):
-        parameters, self.dtype, samplerate = _get_stream_parameters(
-            'output', device, channels, dtype, latency, samplerate)
-        self.device = parameters.device
-        self.channels = parameters.channelCount
-
-        def callback_wrapper(iptr, optr, frames, time, status, _):
-            data = _frombuffer(optr, frames, self.channels, self.dtype)
-            return callback(data, _time2dict(time), status)
-
-        _StreamBase.__init__(self, ffi.NULL, parameters, samplerate,
                              blocksize, callback and callback_wrapper,
                              finished_callback, **flags)
 
