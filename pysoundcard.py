@@ -2,6 +2,7 @@ from cffi import FFI
 import atexit
 import numpy as np
 import warnings
+import threading
 
 """PySoundCard is an audio library based on PortAudio, CFFI and NumPy
 
@@ -723,3 +724,348 @@ def _split(value):
     except ValueError:
         raise ValueError("Only single values and pairs are allowed")
     return invalue, outvalue
+
+
+_stream = None
+_event = None
+
+
+def play(data, samplerate=None, blocking=False, mapping=None, **kwargs):
+    """Play back an array of audio data.
+
+    Parameters
+    ----------
+    data : array_like
+        Audio data to be played back.
+    blocking : bool, optional
+        If ``False`` (the default), return immediately, if ``True``,
+        wait until playback is finished.
+    mapping : array_like, optional
+        List of channel numbers (starting with 1) where the columns of
+        `data` shall be played back on.  Must have the same length as
+        number of channels in `data` (except if `data` is mono).
+        Each channel may only appear once in `mapping`.
+
+    Other Parameters
+    ----------------
+    samplerate, **kwargs
+        All parameters of :class:`OutputStream` (except `channels`,
+        `dtype`, `callback` and `finished_callback`) can be used.
+
+    See Also
+    --------
+    rec, playrec
+
+    """
+    # For code comments see playrec()
+
+    data, frames, channels, dtype, mapping = _check_data(data, mapping)
+    silent_channels = _get_silent_channels(mapping, channels)
+    local_event = _create_global_event()
+
+    def callback(output, time, status):
+        blocksize = min(frames - callback.frame, len(output))
+        if not blocksize:
+            return abort_flag
+        output[:blocksize, mapping] = \
+            data[callback.frame:callback.frame + blocksize]
+        output[:blocksize, silent_channels] = 0
+        output[blocksize:] = 0
+        callback.frame += blocksize
+        return continue_flag
+
+    callback.frame = 0
+
+    def finished_callback():
+        local_event.set()
+
+    stop()
+    global _stream
+    _stream = OutputStream(samplerate=samplerate, channels=channels,
+                           dtype=dtype, callback=callback,
+                           finished_callback=finished_callback, **kwargs)
+    _stream.start()
+    if blocking:
+        wait()
+
+
+def rec(frames=None, samplerate=None, channels=None, blocking=False,
+        dtype='float32', out=None, mapping=None, **kwargs):
+    """Record audio data.
+
+    Parameters
+    ----------
+    frames : int, sometimes optional
+        Number of frames to record.  Not needed if `out` is given.
+    channels : int, sometimes optional
+        Number of channels to record.
+        Not needed if `mapping` or `out` is given.
+    blocking : bool, optional
+        If ``False`` (the default), return immediately, if ``True``,
+        wait until playback is finished.
+    dtype : {'float64', 'float32', 'int32', 'int16', 'int8', 'uint8'}, optional
+        Data type of the recording.
+    mapping : array_like, optional
+        List of channels (starting with 1) to record.
+        If `mapping` is given, `channels` is silently ignored.
+
+    Returns
+    -------
+    numpy.ndarray or type(out)
+        The recorded data.
+
+        .. note:: By default (``blocking=False``), an array of data is
+           returned which is still being written to while recording.
+           The returned data is only valid once recording has stopped.
+           Use :func:`wait` to make sure the recording is finished.
+
+    Other Parameters
+    ----------------
+    out : numpy.ndarray or subclass, optional
+        If `out` is specified, the recorded data is written into the
+        given array instead of creating a new array.
+        In this case, the arguments `frames`, `channels` and `dtype` are
+        silently ignored!
+        If `mapping` is given, its length must match the number of
+        channels in `out`.
+    samplerate, **kwargs
+        All parameters of :class:`InputStream` (`callback` and
+        `finished_callback`) can be used.
+
+    See Also
+    --------
+    play, playrec
+
+    """
+    # For code comments see playrec()
+
+    out, frames, channels, dtype, mapping = \
+        _check_out(out, frames, channels, dtype, mapping)
+    local_event = _create_global_event()
+
+    def callback(input, time, status):
+        blocksize = min(frames - callback.frame, len(input))
+        if not blocksize:
+            return abort_flag
+        for target, source in enumerate(mapping):
+            callback.out[callback.frame:callback.frame + blocksize, target] = \
+                input[:blocksize, source]
+        callback.frame += blocksize
+        return continue_flag
+
+    callback.frame = 0
+    callback.out = out
+
+    def finished_callback():
+        local_event.set()
+
+    stop()
+    global _stream
+    _stream = InputStream(samplerate=samplerate, channels=channels,
+                          dtype=dtype, callback=callback,
+                          finished_callback=finished_callback, **kwargs)
+    _stream.start()
+    if blocking:
+        wait()
+    return out
+
+
+def playrec(data, samplerate=None, input_channels=None, blocking=False,
+            input_dtype='float32', out=None, input_mapping=None,
+            output_mapping=None, **kwargs):
+    """Simultaneous playback and recording.
+
+    Parameters
+    ----------
+    data : array_like
+        Audio data to be played back.  See :func:`play`.
+    input_channels, input_dtype
+        See the parameters `channels` and `dtype` of :func:`rec`.
+    blocking : bool, optional
+        If ``False`` (the default), return immediately, if ``True``,
+        wait until playback/recording is finished.
+    input_mapping, output_mapping : array_like, optional
+        See the parameter `mapping` of :func:`play` and :func:`rec`,
+        respectively.
+
+    Returns
+    -------
+    numpy.ndarray or type(out)
+        The recorded data.  See :func:`rec`.
+
+    Other Parameters
+    ----------------
+    out : numpy.ndarray or subclass, optional
+        See :func:`rec`.
+    samplerate, **kwargs
+        All parameters of :func:`play` and :func:`rec` (except
+        `channels`, `dtype` and `mapping`) can be used.
+
+    See Also
+    --------
+    play, rec
+
+    """
+    data, output_frames, output_channels, output_dtype, output_mapping = \
+        _check_data(data, output_mapping)
+    out, input_frames, input_channels, input_dtype, input_mapping = \
+        _check_out(out, output_frames, input_channels, input_dtype,
+                   input_mapping)
+    if input_frames != output_frames:
+        raise RuntimeError("len(data) != len(out)")
+    frames = input_frames
+    silent_channels = _get_silent_channels(output_mapping, output_channels)
+    local_event = _create_global_event()
+
+    def callback(input, output, time, status):
+        # len(input) == len(output)
+        blocksize = min(frames - callback.frame, len(input))
+        if not blocksize:
+            return abort_flag
+
+        # 'float64' data is cast to 'float32' here:
+        output[:blocksize, output_mapping] = \
+            data[callback.frame:callback.frame + blocksize]
+        output[:blocksize, silent_channels] = 0
+        output[blocksize:] = 0
+
+        # We manually iterate over each channel in mapping because
+        # numpy.take(..., out=...) has a bug:
+        # https://github.com/numpy/numpy/pull/4246.
+        # Note: using input[:blocksize, mapping] (a.k.a. 'fancy' indexing)
+        # would create unwanted copies (and probably memory allocations).
+        for target, source in enumerate(input_mapping):
+            # If out.dtype is 'float64', 'float32' data is "upgraded" here:
+            callback.out[callback.frame:callback.frame + blocksize, target] = \
+                input[:blocksize, source]
+
+        callback.frame += blocksize
+        return continue_flag
+
+    # initialize frame counter etc. used in callback (emulate 'nonlocal'):
+    callback.frame = 0
+    callback.out = out
+
+    def finished_callback():
+        # local_event is kept alive even if _event is re-bound
+        local_event.set()
+
+    stop()  # Stop previous playback/recording
+    global _stream
+    _stream = Stream(samplerate=samplerate,
+                     channels=(input_channels, output_channels),
+                     dtype=(input_dtype, output_dtype), callback=callback,
+                     finished_callback=finished_callback, **kwargs)
+    _stream.start()
+    if blocking:
+        wait()
+    return out
+
+
+def wait():
+    """Wait for :func:`play`/:func:`rec`/:func:`playrec` to be finished.
+
+    Playback/recording can be stopped with a KeyboardInterrupt.
+
+    """
+    global _event
+    if _event is None:
+        return
+    try:
+        _event.wait()
+    finally:
+        stop()
+
+
+def stop():
+    """Stop playback/recording.
+
+    This only stops :func:`play`, :func:`rec` and :func:`playrec`, but
+    has no influence on streams created with :class:`Stream`,
+    :class:`InputStream`, :class:`OutputStream`.
+
+    """
+    global _stream
+    try:
+        _stream.close()
+    except AttributeError:
+        pass  # If stop() is called before play()
+    except RuntimeError:
+        pass  # If stop() is called multiple times
+
+
+def _check_data(data, mapping):
+    """Check data and mapping; obtain frames, channels and dtype."""
+    data = np.asarray(data)
+    if data.ndim < 2:
+        data = data.reshape(-1, 1)
+    frames, channels = data.shape
+    dtype = _check_dtype(data.dtype)
+    mapping, channels = _check_mapping(mapping, channels)
+    if data.shape[1] == 1:
+        pass  # No problem, mono data can be duplicated into arbitrary channels
+    elif data.shape[1] != len(mapping):
+        raise ValueError("number of output channels != size of output mapping")
+    return data, frames, channels, dtype, mapping
+
+
+def _check_out(out, frames, channels, dtype, mapping):
+    """Check out, frames, channels, dtype and mapping."""
+    if out is None:
+        if frames is None:
+            raise TypeError("'frames' must be specified")
+        if channels is None:
+            if mapping is None:
+                raise TypeError("Unable to determine number of input channels")
+            else:
+                channels = len(np.atleast_1d(mapping))
+        out = np.empty((frames, channels), dtype, order='C')
+    else:
+        frames, channels = out.shape
+        dtype = out.dtype
+    dtype = _check_dtype(dtype)
+    mapping, channels = _check_mapping(mapping, channels)
+    if out.shape[1] != len(mapping):
+        raise ValueError("number of input channels != size of input mapping")
+    return out, frames, channels, dtype, mapping
+
+
+def _check_mapping(mapping, channels):
+    """Check mapping, obtain channels."""
+    if mapping is None:
+        mapping = np.arange(channels)
+    else:
+        mapping = np.atleast_1d(mapping)
+        if mapping.min() < 1:
+            raise ValueError("channel numbers must not be < 1")
+        channels = mapping.max()
+        mapping -= 1  # channel numbers start with 1
+    return mapping, channels
+
+
+def _check_dtype(dtype):
+    """Check dtype."""
+    dtype = np.dtype(dtype)
+    if dtype in _np2pa:
+        pass
+    elif dtype == np.float64:
+        dtype = np.float32
+    else:
+        raise TypeError("Unsupported data type: %s" % repr(dtype.name))
+    return dtype
+
+
+def _get_silent_channels(mapping, channels):
+    """Check mapping for unused channels."""
+    silent_channels = np.setdiff1d(np.arange(channels), mapping)
+    if len(mapping) + len(silent_channels) != channels:
+        raise ValueError("each channel may only appear once in mapping")
+    return silent_channels
+
+
+def _create_global_event():
+    """Create a global event and return a copy of it."""
+    local_event = threading.Event()
+    global _event
+    _event = local_event
+    return local_event
