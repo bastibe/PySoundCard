@@ -1109,6 +1109,8 @@ def _check_data(data, mapping):
 def _check_out(out, frames, channels, dtype, mapping):
     """Check out, frames, channels, dtype and mapping."""
     if out is None:
+        if frames is None:
+            raise TypeError("'frames' must be specified")
         if channels is None:
             channels = default['input'].channels
         if channels is None:
