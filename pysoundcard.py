@@ -640,11 +640,8 @@ class Stream(object):
                 data.dtype != self.output_format):
             data = np.array(data, dtype=self.output_format)
         if len(data.shape) == 1:
-            # broadcast 1D arrays to (n,1) matrices
-            data = np.asmatrix(data).T
-        elif len(data.shape) == 2 and data.shape[1] == 1:
             # play mono signals on all channels
-            data = np.tile(data, (1, num_channels))
+            data = np.tile(data, (num_channels, 1)).T
         if data.shape[1] > num_channels:
             data = data[:, :num_channels]
         if data.shape < (num_frames, num_channels):
