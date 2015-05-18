@@ -204,11 +204,11 @@ complete_flag = 1
 abort_flag = 2
 
 _np2pa = {
-    np.float32: 0x01,
-    np.int32:   0x02,
-    np.int16:   0x08,
-    np.int8:    0x10,
-    np.uint8:   0x20
+    np.dtype('float32'): 0x01,
+    np.dtype('int32'):   0x02,
+    np.dtype('int16'):   0x08,
+    np.dtype('int8'):    0x10,
+    np.dtype('uint8'):   0x20
 }
 
 _pa = ffi.dlopen('portaudio')
@@ -216,70 +216,76 @@ _pa.Pa_Initialize()
 atexit.register(_pa.Pa_Terminate)
 
 
-def _api2dict(api, index):
-    if api == ffi.NULL:
-        raise RuntimeError("Invalid host API info!")
-    return {'struct_version': api.structVersion,
-            'type': api.type,
-            'name': ffi.string(api.name).decode(errors='ignore'),
-            'api_idx': index,
-            'device_count': api.deviceCount,
-            'default_input_device_index': api.defaultInputDevice,
-            'default_output_device_index': api.defaultOutputDevice}
+def hostapi_info(index=None):
+    """Return a generator with information about each host API.
 
+    If index is given, only one dictionary for the given host API is
+    returned.
 
-def _dev2dict(dev, index):
-    if dev == ffi.NULL:
-        raise RuntimeError("Invalid device info!")
-    if 'DirectSound' in list(apis())[dev.hostApi]['name']:
-        enc = 'mbcs'
+    """
+    if index is None:
+        return (hostapi_info(i) for i in range(_pa.Pa_GetHostApiCount()))
     else:
-        enc = 'utf-8'
-    return {'struct_version': dev.structVersion,
-            'name': ffi.string(dev.name).decode(encoding=enc, errors='ignore'),
-            'device_index': index,
-            'host_api_index': dev.hostApi,
-            'input_channels': dev.maxInputChannels,
-            'output_channels': dev.maxOutputChannels,
-            'default_low_input_latency': dev.defaultLowInputLatency,
-            'default_low_output_latency': dev.defaultLowOutputLatency,
-            'default_high_input_latency': dev.defaultHighInputLatency,
-            'default_high_output_latency': dev.defaultHighOutputLatency,
-            'default_sample_rate': dev.defaultSampleRate,
-            'input_latency': dev.defaultLowInputLatency,
-            'output_latency': dev.defaultLowOutputLatency,
-            'sample_format': np.float32,
-            'interleaved_data': True}
+        info = _pa.Pa_GetHostApiInfo(index)
+        if not info:
+            raise RuntimeError("Invalid host API")
+        assert info.structVersion == 1
+        return {'name': ffi.string(info.name).decode(errors='ignore'),
+                'default_input_device': info.defaultInputDevice,
+                'default_output_device': info.defaultOutputDevice}
 
 
-def apis():
-    """Returns a list of all available audio apis."""
-    for idx in range(_pa.Pa_GetHostApiCount()):
-        yield _api2dict(_pa.Pa_GetHostApiInfo(idx), idx)
+def device_info(index=None):
+    """Return a generator with information about each device.
+
+    If index is given, only one dictionary for the given device is
+    returned.
+
+    """
+    if index is None:
+        return (device_info(i) for i in range(_pa.Pa_GetDeviceCount()))
+    else:
+        info = _pa.Pa_GetDeviceInfo(index)
+        if not info:
+            raise RuntimeError("Invalid device")
+        assert info.structVersion == 2
+
+        if 'DirectSound' in hostapi_info(info.hostApi)['name']:
+            enc = 'mbcs'
+        else:
+            enc = 'utf-8'
+
+        return {'name': ffi.string(info.name).decode(encoding=enc,
+                                                     errors='ignore'),
+                'hostapi': info.hostApi,
+                'max_input_channels': info.maxInputChannels,
+                'max_output_channels': info.maxOutputChannels,
+                'default_low_input_latency': info.defaultLowInputLatency,
+                'default_low_output_latency': info.defaultLowOutputLatency,
+                'default_high_input_latency': info.defaultHighInputLatency,
+                'default_high_output_latency': info.defaultHighOutputLatency,
+                'default_samplerate': info.defaultSampleRate}
 
 
-def devices():
-    """Returns a list of all available audio devices."""
-    for idx in range(_pa.Pa_GetDeviceCount()):
-        yield _dev2dict(_pa.Pa_GetDeviceInfo(idx), idx)
-
-
-def default_api():
-    """Returns data about the default audio api."""
-    idx = _pa.Pa_GetDefaultHostApi()
-    return _api2dict(_pa.Pa_GetHostApiInfo(idx), idx)
+def default_hostapi():
+    """Return default host API index."""
+    return _pa.Pa_GetDefaultHostApi()
 
 
 def default_input_device():
-    """Returns data about the default audio input device."""
+    """Return default input device index."""
     idx = _pa.Pa_GetDefaultInputDevice()
-    return _dev2dict(_pa.Pa_GetDeviceInfo(idx), idx)
+    if idx < 0:
+        raise RuntimeError("No default input device available")
+    return idx
 
 
 def default_output_device():
-    """Returns data about the default audio output device."""
+    """Return default output device index."""
     idx = _pa.Pa_GetDefaultOutputDevice()
-    return _dev2dict(_pa.Pa_GetDeviceInfo(idx), idx)
+    if idx < 0:
+        raise RuntimeError("No default output device available")
+    return idx
 
 
 def pa_version():
@@ -287,180 +293,59 @@ def pa_version():
     return (_pa.Pa_GetVersion(), ffi.string(_pa.Pa_GetVersionText()).decode())
 
 
-class Stream(object):
+class _StreamBase(object):
 
-    """Streams handle audio input and output to your application.
+    """Base class for Stream, InputStream and OutputStream."""
 
-    Each stream operates at a specific sample rate with specific
-    sample formats and buffer sizes. Each stream can either be half
-    duplex (input only or output only) or full duplex (both input and
-    output). For full duplex operation, the input and output device
-    must use the same audio api.
-
-    Once a stream has been created, audio processing can be started
-    and stopped multiple times using start(), stop() and abort(). The
-    functions is_active() and is_stopped() can be used to check this.
-
-    The functions info(), time() and cpu_load() can be used to get
-    additional information about the stream.
-
-    Data can be read and written to the stream using read() and
-    write(). Use read_length() and write_length() to see how many
-    frames can be read or written at the current time.
-
-    Alternatively, a callback can be specified which is called
-    whenever there is data available to read or write.
-
-    """
-
-    def __init__(self, sample_rate=44100, block_length=0,
-                 input_device=True, output_device=True,
-                 callback=None, finished_callback=None,
-                 **flags):
-        """Open a new stream.
-
-        If no sample rate is given, 44100 Hz is assumed.
-
-        If no input or output device (or True) is specified, the
-        default input/output device is taken. For input/output-only
-        streams, provide None or False as input/output-device.
-
-        The output/output device is merely a dictionary of parameters.
-        Customize those parameters for more precise control over the
-        device.
-
-        If a callback is given, it will be called whenever the stream
-        is active and data is available to read or write. If a
-        finished_callback is given, it will be called whenever the
-        stream is stopped or aborted. If a callback is given, read()
-        and write() should not be used.
-
-        The callback should have a signature like this:
-
-        callback(input, output, time, status) -> flag
-
-        where input is the recorded data as a NumPy array, output is
-        another NumPy array (with uninitialized content), where the data
-        for playback has to be written to (using indexing).
-        Either input or output can be None if the stream was started
-        without input or output device, respectively.
-        time is a dictionary with some timing information, and
-        status indicates whether input or output buffers have
-        been inserted or dropped to overcome underflow or overflow
-        conditions.
-
-        The function must return one of continue_flag, complete_flag or
-        abort_flag.  complete_flag and abort_flag act as if stop() or
-        abort() had been called, respectively.  continue_flag resumes
-        normal audio processing.
-
-        The finished_callback should be a function with no arguments
-        and no return values.
-
-        """
-        if input_device is True:
-            input_device = default_input_device()
-        if output_device is True:
-            output_device = default_output_device()
-
-        if input_device:
-            stream_parameters_in = \
-                ffi.new("PaStreamParameters*",
-                        (input_device['device_index'],
-                         input_device['input_channels'],
-                         _np2pa[input_device['sample_format']],
-                         input_device['input_latency'],
-                         ffi.NULL))
-            self.input_format = np.dtype(input_device['sample_format'])
-            self.input_channels = stream_parameters_in.channelCount
-            if stream_parameters_in and not input_device['interleaved_data']:
-                stream_parameters_in.sampleFormat |= 0x80000000
-        else:
-            stream_parameters_in = ffi.NULL
-            self.input_format = None
-            self.input_channels = 0
-
-        if output_device:
-            stream_parameters_out = \
-                ffi.new("PaStreamParameters*",
-                        (output_device['device_index'],
-                         output_device['output_channels'],
-                         _np2pa[output_device['sample_format']],
-                         output_device['output_latency'],
-                         ffi.NULL))
-            self.output_format = np.dtype(output_device['sample_format'])
-            self.output_channels = stream_parameters_out.channelCount
-            if stream_parameters_out and not output_device['interleaved_data']:
-                stream_parameters_out.sampleFormat |= 0x80000000
-        else:
-            stream_parameters_out = ffi.NULL
-            self.output_format = None
-            self.output_channels = 0
-
-        stream_flags = 0
-        if 'no_clipping' in flags:
+    def __init__(self, iparameters, oparameters, samplerate, blocksize,
+                 callback_wrapper, finished_callback,
+                 clip_off=False, dither_off=False, never_drop_input=False,
+                 prime_output_buffers_using_stream_callback=False):
+        stream_flags = 0x0
+        if clip_off:
             stream_flags |= 0x00000001
-        if 'no_dithering' in flags:
+        if dither_off:
             stream_flags |= 0x00000002
-        if 'never_drop_input' in flags and flags['never_drop_input']:
+        if never_drop_input:
             stream_flags |= 0x00000004
-        if 'prime_output_buffers_using_callback' in flags:
+        if prime_output_buffers_using_stream_callback:
             stream_flags |= 0x00000008
 
-        if callback:
-            @ffi.callback("PaStreamCallback")
-            def callback_stub(input_ptr, output_ptr, frames, time, status, _):
-                if self.input_channels < 1:
-                    input = None
-                else:
-                    num_bytes = (self.input_channels *
-                                 self.input_format.itemsize * frames)
-                    input = np.frombuffer(ffi.buffer(input_ptr, num_bytes),
-                                          dtype=self.input_format)
-                    input.shape = -1, self.input_channels
-
-                if self.output_channels < 1:
-                    output = None
-                else:
-                    num_bytes = (self.output_channels *
-                                 self.output_format.itemsize * frames)
-                    output = np.frombuffer(ffi.buffer(output_ptr, num_bytes),
-                                           dtype=self.output_format)
-                    output.shape = -1, self.output_channels
-
-                time = {'input_adc_time': time.inputBufferAdcTime,
-                        'current_time': time.currentTime,
-                        'output_dac_time': time.outputBufferDacTime}
-                return callback(input, output, time, status)
-
-            self._callback = callback_stub
+        if callback_wrapper:
+            self._callback = ffi.callback(
+                "PaStreamCallback", callback_wrapper, error=abort_flag)
         else:
             self._callback = ffi.NULL
 
         self._stream = ffi.new("PaStream**")
-        err = _pa.Pa_OpenStream(self._stream, stream_parameters_in or ffi.NULL,
-                                stream_parameters_out or ffi.NULL, sample_rate,
-                                block_length, stream_flags, self._callback,
-                                ffi.NULL)
+        err = _pa.Pa_OpenStream(self._stream, iparameters, oparameters,
+                                samplerate, blocksize, stream_flags,
+                                self._callback, ffi.NULL)
         self._handle_error(err)
 
         # dereference PaStream** --> PaStream*
         self._stream = self._stream[0]
 
         # set some stream information
-        self.sample_rate = sample_rate
-        self.block_length = block_length
+        self.blocksize = blocksize
         info = _pa.Pa_GetStreamInfo(self._stream)
-        if info == ffi.NULL:
+        if not info:
             raise RuntimeError("Could not obtain stream info!")
-        self.input_latency = info.inputLatency,
-        self.output_latency = info.outputLatency,
+        self.samplerate = info.sampleRate
+        if not oparameters:
+            self.latency = info.inputLatency
+        elif not iparameters:
+            self.latency = info.outputLatency
+        else:
+            self.latency = info.inputLatency, info.outputLatency
 
         if finished_callback:
-            @ffi.callback("PaStreamFinishedCallback")
-            def finished_callback_stub(userData):
-                finished_callback()
-            self._finished_callback = finished_callback_stub
+
+            def finished_callback_wrapper(_):
+                return finished_callback()
+
+            self._finished_callback = ffi.callback(
+                "PaStreamFinishedCallback", finished_callback_wrapper)
             err = _pa.Pa_SetStreamFinishedCallback(self._stream,
                                                    self._finished_callback)
             self._handle_error(err)
@@ -563,14 +448,6 @@ class Stream(object):
         """
         return self._handle_error(_pa.Pa_IsStreamStopped(self._stream)) == 1
 
-    def read_length(self):
-        """The number of frames that can be written without waiting."""
-        return _pa.Pa_GetStreamReadAvailable(self._stream)
-
-    def write_length(self):
-        """The number of frames that can be read without waiting."""
-        return _pa.Pa_GetStreamWriteAvailable(self._stream)
-
     def time(self):
         """Returns the current stream time in seconds.
 
@@ -594,7 +471,32 @@ class Stream(object):
         """
         return _pa.Pa_GetStreamCpuLoad(self._stream)
 
-    def read(self, num_frames, raw=False):
+
+class InputStream(_StreamBase):
+
+    """Stream for recording only.  See :class:`Stream`."""
+
+    def __init__(self, samplerate=None, blocksize=0,
+                 device=None, channels=None, dtype='float32', latency=0,
+                 callback=None, finished_callback=None, **flags):
+        parameters, self.dtype, samplerate = _get_stream_parameters(
+            'input', device, channels, dtype, latency, samplerate)
+        self.device = parameters.device
+        self.channels = parameters.channelCount
+
+        def callback_wrapper(iptr, optr, frames, time, status, _):
+            data = _frombuffer(iptr, frames, self.channels, self.dtype)
+            return callback(data, _time2dict(time), status)
+
+        _StreamBase.__init__(self, parameters, ffi.NULL, samplerate,
+                             blocksize, callback and callback_wrapper,
+                             finished_callback, **flags)
+
+    def read_length(self):
+        """The number of frames that can be read without waiting."""
+        return _pa.Pa_GetStreamReadAvailable(self._stream)
+
+    def read(self, frames, raw=False):
         """Read samples from an input stream.
 
         The function does not return until the required number of
@@ -606,25 +508,50 @@ class Stream(object):
         with one column per channel is returned.
 
         """
-        num_bytes = (self.input_channels * self.input_format.itemsize *
-                     num_frames)
-        data = ffi.new("signed char[]", num_bytes)
-        self._handle_error(_pa.Pa_ReadStream(self._stream, data, num_frames))
+        channels, _ = _split(self.channels)
+        dtype, _ = _split(self.dtype)
+        data = ffi.new("signed char[]", channels * dtype.itemsize * frames)
+        self._handle_error(_pa.Pa_ReadStream(self._stream, data, frames))
         if not raw:
-            data = np.frombuffer(ffi.buffer(data), dtype=self.input_format)
-            data.shape = frames, self.input_channels
+            data = np.frombuffer(ffi.buffer(data), dtype=dtype)
+            data.shape = frames, channels
         return data
+
+
+class OutputStream(_StreamBase):
+
+    """Stream for playback only.  See :class:`Stream`."""
+
+    def __init__(self, samplerate=None, blocksize=0,
+                 device=None, channels=None, dtype='float32', latency=0,
+                 callback=None, finished_callback=None, **flags):
+        parameters, self.dtype, samplerate = _get_stream_parameters(
+            'output', device, channels, dtype, latency, samplerate)
+        self.device = parameters.device
+        self.channels = parameters.channelCount
+
+        def callback_wrapper(iptr, optr, frames, time, status, _):
+            data = _frombuffer(optr, frames, self.channels, self.dtype)
+            return callback(data, _time2dict(time), status)
+
+        _StreamBase.__init__(self, ffi.NULL, parameters, samplerate,
+                             blocksize, callback and callback_wrapper,
+                             finished_callback, **flags)
+
+    def write_length(self):
+        """The number of frames that can be written without waiting."""
+        return _pa.Pa_GetStreamWriteAvailable(self._stream)
 
     def write(self, data):
         """Write samples to an output stream.
 
-        As much as one block_length of audio data will be played
-        without blocking. If more than one block_length was provided,
-        the function will only return when all but one block_length
+        As much as one blocksize of audio data will be played
+        without blocking. If more than one blocksize was provided,
+        the function will only return when all but one blocksize
         has been played.
 
         Data will be converted to a numpy matrix. Multichannel data
-        should be provided as a (num_frames, channels) matrix. If the
+        should be provided as a (frames, channels) matrix. If the
         data is provided as a 1-dim array, it will be treated as mono
         data and will be played on all channels simultaneously. If the
         data is provided as a 2-dim matrix and fewer tracks are
@@ -633,46 +560,166 @@ class Stream(object):
         are channels, the extraneous channels will not be played.
 
         """
-        num_frames = len(data)
-        num_channels = self.output_channels
+        frames = len(data)
+        _, channels = _split(self.channels)
+        _, dtype = _split(self.dtype)
 
-        if (not isinstance(data, np.ndarray) or
-                data.dtype != self.output_format):
-            data = np.array(data, dtype=self.output_format)
+        if (not isinstance(data, np.ndarray) or data.dtype != dtype):
+            data = np.array(data, dtype=dtype)
         if len(data.shape) == 1:
             # play mono signals on all channels
-            data = np.tile(data, (num_channels, 1)).T
-        if data.shape[1] > num_channels:
-            data = data[:, :num_channels]
-        if data.shape < (num_frames, num_channels):
+            data = np.tile(data, (channels, 1)).T
+        if data.shape[1] > channels:
+            data = data[:, :channels]
+        if data.shape < (frames, channels):
             # if less data is available than requested, pad with zeros.
             tmp = data
-            data = np.zeros((num_frames, num_channels),
-                            dtype=self.output_format)
+            data = np.zeros((frames, channels), dtype=dtype)
             data[:tmp.shape[0], :tmp.shape[1]] = tmp
 
         data = data.ravel().tostring()
-        err = _pa.Pa_WriteStream(self._stream, data, num_frames)
+        err = _pa.Pa_WriteStream(self._stream, data, frames)
         self._handle_error(err)
 
 
-if __name__ == '__main__':
-    from scipy.io.wavfile import read as wavread
-    import time
-    fs, wave = wavread('thistle.wav')
-    wave = np.array(wave, dtype=np.float32)
-    wave /= 2**15
-    block_length = 4
+class Stream(InputStream, OutputStream):
 
-    def callback(in_data, frame_count, time_info, status):
-        if status != 0:
-            print(status)
-        return (in_data, continue_flag)
-    s = Stream(sample_rate=fs, block_length=block_length, callback=callback)
-    s.start()
-    # for n in range(int(fs*5/block_length)):
-    #     s.write(s.read(block_length))
-    # for idx in range(0, wave.size, block_length):
-    #     s.write(wave[idx:idx+block_length])
-    time.sleep(5)
-    s.stop()
+    """Streams handle audio input and output to your application.
+
+    Each stream operates at a specific sample rate with specific
+    sample formats and buffer sizes. Each stream can either be half
+    duplex (input only or output only) or full duplex (both input and
+    output). For full duplex operation, the input and output device
+    must use the same audio api.
+
+    Once a stream has been created, audio processing can be started
+    and stopped multiple times using start(), stop() and abort(). The
+    functions is_active() and is_stopped() can be used to check this.
+
+    The functions info(), time() and cpu_load() can be used to get
+    additional information about the stream.
+
+    Data can be read and written to the stream using read() and
+    write(). Use read_length() and write_length() to see how many
+    frames can be read or written at the current time.
+
+    Alternatively, a callback can be specified which is called
+    whenever there is data available to read or write.
+
+    """
+
+    def __init__(self, samplerate=None, blocksize=0,
+                 device=None, channels=None, dtype='float32', latency=0,
+                 callback=None, finished_callback=None, **flags):
+        """Open a new stream.
+
+        If no input or output device is specified, the
+        default input/output device is taken.
+
+        If a callback is given, it will be called whenever the stream
+        is active and data is available to read or write. If a
+        finished_callback is given, it will be called whenever the
+        stream is stopped or aborted. If a callback is given, read()
+        and write() should not be used.
+
+        The callback should have a signature like this:
+
+        callback(input, output, time, status) -> flag
+
+        where input is the recorded data as a NumPy array, output is
+        another NumPy array (with uninitialized content), where the data
+        for playback has to be written to (using indexing).
+        time is a dictionary with some timing information, and
+        status indicates whether input or output buffers have
+        been inserted or dropped to overcome underflow or overflow
+        conditions.
+
+        The function must return one of continue_flag, complete_flag or
+        abort_flag.  complete_flag and abort_flag act as if stop() or
+        abort() had been called, respectively.  continue_flag resumes
+        normal audio processing.
+
+        The finished_callback should be a function with no arguments
+        and no return values.
+
+        """
+        idevice, odevice = _split(device)
+        ichannels, ochannels = _split(channels)
+        idtype, odtype = _split(dtype)
+        ilatency, olatency = _split(latency)
+        iparameters, idtype, isamplerate = _get_stream_parameters(
+            'input', idevice, ichannels, idtype, ilatency, samplerate)
+        oparameters, odtype, osamplerate = _get_stream_parameters(
+            'output', odevice, ochannels, odtype, olatency, samplerate)
+        self.dtype = idtype, odtype
+        self.device = iparameters.device, oparameters.device
+        ichannels = iparameters.channelCount
+        ochannels = oparameters.channelCount
+        self.channels = ichannels, ochannels
+        if isamplerate != osamplerate:
+            raise RuntimeError(
+                "Input and output device must have the same samplerate")
+        else:
+            samplerate = isamplerate
+
+        def callback_wrapper(iptr, optr, frames, time, status, _):
+            idata = _frombuffer(iptr, frames, ichannels, idtype)
+            odata = _frombuffer(optr, frames, ochannels, odtype)
+            return callback(idata, odata, _time2dict(time), status)
+
+        _StreamBase.__init__(self, iparameters, oparameters, samplerate,
+                             blocksize, callback and callback_wrapper,
+                             finished_callback, **flags)
+
+
+def _get_stream_parameters(kind, device, channels, dtype, latency, samplerate):
+    """Generate PaStreamParameters struct."""
+    if device is None:
+        if kind == 'input':
+            device = _pa.Pa_GetDefaultInputDevice()
+        elif kind == 'output':
+            device = _pa.Pa_GetDefaultOutputDevice()
+
+    info = device_info(device)
+    if channels is None:
+        channels = info['max_' + kind + '_channels']
+    dtype = np.dtype(dtype)
+    try:
+        sample_format = _np2pa[dtype]
+    except KeyError:
+        raise ValueError("Invalid " + kind + " sample format")
+    if samplerate is None:
+        samplerate = info['default_samplerate']
+    parameters = ffi.new(
+        "PaStreamParameters*",
+        (device, channels, sample_format, latency, ffi.NULL))
+    return parameters, dtype, samplerate
+
+
+def _frombuffer(ptr, frames, channels, dtype):
+    """Create NumPy array from a pointer to some memory."""
+    framesize = channels * dtype.itemsize
+    data = np.frombuffer(ffi.buffer(ptr, frames * framesize), dtype=dtype)
+    data.shape = -1, channels
+    return data
+
+
+def _time2dict(time):
+    """Convert PaStreamCallbackTimeInfo struct to dict."""
+    return {'input_adc_time':  time.inputBufferAdcTime,
+            'current_time':    time.currentTime,
+            'output_dac_time': time.outputBufferDacTime}
+
+
+def _split(value):
+    """Split input/output value into two values."""
+    if isinstance(value, str):
+        # iterable, but not meant for splitting
+        return value, value
+    try:
+        invalue, outvalue = value
+    except TypeError:
+        invalue = outvalue = value
+    except ValueError:
+        raise ValueError("Only single values and pairs are allowed")
+    return invalue, outvalue
