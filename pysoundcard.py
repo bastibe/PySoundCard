@@ -1,3 +1,5 @@
+import sys
+import os
 from cffi import FFI
 import atexit
 import numpy as np
@@ -211,7 +213,20 @@ _np2pa = {
     np.dtype('uint8'):   0x20
 }
 
-_pa = ffi.dlopen('portaudio')
+try:
+    _pa = ffi.dlopen('portaudio')
+except OSError as err:
+    if sys.platform == 'darwin':
+        libname = 'portaudio.dylib'
+    elif sys.platform == 'win32':
+        from platform import architecture as _architecture
+        libname = 'portaudio' + _architecture()[0] + '.dll'
+    else:
+        raise
+    _pa = ffi.dlopen(os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        '_soundcard_data', libname))
+
 _pa.Pa_Initialize()
 atexit.register(_pa.Pa_Terminate)
 

@@ -26,16 +26,24 @@ PySoundCard is BSD licensed.
 Installation
 -------------
 
+PySoundCard is now available as a binary pip wheel that includes
+PortAudio. Thus, `pip install pysoundcard` should just work on Windows
+and OS X. On Linux, you still have to install PortAudio through your
+package manager first.
+
 On the Python side, you need to have CFFI and Numpy in order to use
 PySoundCard. Additionally, You need the library PortAudio installed on
 your computer. On Unix, use your package manager to install PortAudio.
 Then just install PySoundCard using pip or `python setup.py install`.
 
-If you are running Windows, I recommend using [WinPython][] or some
-similar distribution. This should set you up with Numpy. However, you
-also need CFFI and it's dependency, PyCParser. A good place to get
-these are the [Unofficial Windows Binaries for Python][pybuilds].
-Having installed those, you can download the Windows installers for
+If you are running Windows, I recommend using [Anaconda][] or some
+similar distribution. This should set you up with all the modules you
+need for PySoundCard.
+
+If you would rather use a Windows installer, you also need to install
+Numpy, CFFI and it's dependency, PyCParser. A good place to get these
+are the [Unofficial Windows Binaries for Python][pybuilds]. Having
+installed those, you can download the Windows installers for
 PySoundCard:
 
 [PySoundCard-0.5.0.win-amd64-py2.7](https://github.com/bastibe/PySoundCard/releases/download/0.5.0/PySoundCard-0.5.0.win-amd64-py2.7.exe)  
@@ -43,7 +51,7 @@ PySoundCard:
 [PySoundCard-0.5.0.win32-py2.7](https://github.com/bastibe/PySoundCard/releases/download/0.5.0/PySoundCard-0.5.0.win32-py2.7.exe)  
 [PySoundCard-0.5.0.win32-py3.3](https://github.com/bastibe/PySoundCard/releases/download/0.5.0/PySoundCard-0.5.0.win32-py3.3.exe)
 
-[WinPython]: https://code.google.com/p/winpython/
+[WinPython]: https://www.continuum.io/downloads
 [pybuilds]: http://www.lfd.uci.edu/~gohlke/pythonlibs/
 
 Usage
