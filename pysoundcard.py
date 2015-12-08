@@ -62,6 +62,8 @@ PySoundCard is BSD licensed.
 
 """
 
+__version__ = "0.5.2"
+
 ffi = FFI()
 ffi.cdef("""
 typedef int PaError;
