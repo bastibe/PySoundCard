@@ -1,3 +1,24 @@
+THIS PROJECT IS DEPRECATED
+==========================
+
+PySoundCard uses the C library
+[portaudio](http://www.portaudio.com) to interface with sound
+cards. After many years of working on this problem, I have come
+to the conclusion that this is not the best way of doing things
+in Python. Instead, we should be interfacing with the native
+audio libraries directly, rather than go through an intermediary
+C-library.
+
+So my focus is now a newer python module called
+[SoundCard](https://github.com/bastibe/SoundCard), which does
+just that. This approach is much easier to use, has no binary
+dependencies, performs better, and is not dependent on an
+external library.
+
+If you instead want a better-maintained version of a portaudio
+interface for Python, please check out
+[SoundDevice](https://github.com/spatialaudio/python-sounddevice).
+
 PySoundCard
 ===========
 
